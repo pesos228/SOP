@@ -6,6 +6,7 @@ import (
 	"hosting-service/internal/domain"
 	"hosting-service/internal/graph"
 	"hosting-service/internal/handlers"
+	"hosting-service/internal/middleware"
 	"hosting-service/internal/repository/psql"
 	"hosting-service/internal/service"
 	"log"
@@ -14,7 +15,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	httpSwagger "github.com/swaggo/http-swagger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -45,12 +46,11 @@ func main() {
 
 	apiHandler := handlers.NewApiHandler(planService, serverService)
 
-	strictHandler := api.NewStrictHandler(apiHandler, nil)
-
 	router := chi.NewRouter()
 
 	router.Use(middleware.Logger)
-	router.Use(middleware.Recoverer)
+	router.Use(middleware.PerformanceLogger)
+	router.Use(chiMiddleware.Recoverer)
 
 	router.Handle("/graphi", playgroundHandler)
 	router.Handle("/graphql", graphqlHandler)
@@ -64,13 +64,17 @@ func main() {
 		httpSwagger.URL("http://localhost:8080/swagger/doc.yaml"),
 	))
 
-	handler := api.HandlerFromMux(strictHandler, router)
+	apiRouter := chi.NewRouter()
+	strictHandler := api.NewStrictHandler(apiHandler, nil)
+	api.HandlerFromMux(strictHandler, apiRouter)
+	apiRouter.Get("/", handlers.RootEntryPoint)
+	router.Mount("/api", apiRouter)
 
 	port := "8080"
 	fmt.Printf("Сервер GraphQL запущен. Playground: http://localhost:%s/graphi\n", port)
 	fmt.Printf("Сервер REST (Swagger) запущен. UI: http://localhost:%s/swagger/\n", port)
 
-	if err := http.ListenAndServe(":"+port, handler); err != nil {
+	if err := http.ListenAndServe(":"+port, router); err != nil {
 		log.Fatalf("Не удалось запустить сервер: %v", err)
 	}
 }

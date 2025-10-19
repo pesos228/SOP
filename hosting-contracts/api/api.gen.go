@@ -36,6 +36,9 @@ const (
 // Link defines model for Link.
 type Link struct {
 	Href *string `json:"href,omitempty"`
+
+	// Templated Указывает, является ли 'href' URI-шаблоном (RFC 6570).
+	Templated *bool `json:"templated,omitempty"`
 }
 
 // Links Контейнер для гипермедиа-ссылок.

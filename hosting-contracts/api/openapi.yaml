@@ -4,6 +4,10 @@ info:
   description: "REST API для витрины и управления серверами с поддержкой HATEOAS (HAL)."
   version: "1.1.0"
 
+servers:
+  - url: /api
+    description: Основной префикс для всех эндпоинтов API
+
 tags:
   - name: "Plans"
     description: "Витрина: доступные конфигурации серверов"
@@ -208,6 +212,10 @@ components:
         href:
           type: string
           format: uri
+        templated:
+          type: boolean
+          description: "Указывает, является ли 'href' URI-шаблоном (RFC 6570)."
+          default: false
     Links:
       type: object
       additionalProperties:

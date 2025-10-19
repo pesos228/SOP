@@ -9,9 +9,9 @@ import (
 func ToServer(server dto.ServerPreview) api.Server {
 	links := make(api.Links)
 
-	links["self"] = api.Link{Href: to(fmt.Sprintf("/servers/%s", server.ID.String()))}
+	links["self"] = api.Link{Href: to(fmt.Sprintf("/api/servers/%s", server.ID.String()))}
 
-	actionsHref := to(fmt.Sprintf("/servers/%s/actions", server.ID.String()))
+	actionsHref := to(fmt.Sprintf("/api/servers/%s/actions", server.ID.String()))
 
 	switch server.Status {
 	case "RUNNING":
@@ -41,7 +41,7 @@ func ToServerCollectionResponse(result dto.ServerSearch, page, pageSize int) api
 		embeddedServers[i] = ToServer(*p)
 	}
 
-	collectionLinks := newPaginationLinks("/servers", page, pageSize, result.Meta.TotalPages, result.Meta.HasPrev, result.Meta.HasNext)
+	collectionLinks := newPaginationLinks("/api/servers", page, pageSize, result.Meta.TotalPages, result.Meta.HasPrev, result.Meta.HasNext)
 
 	pageMeta := &struct {
 		Number        *int   `json:"number,omitempty"`

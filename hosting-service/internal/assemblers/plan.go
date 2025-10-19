@@ -9,7 +9,7 @@ import (
 func ToPlan(plan dto.PlanPreview) api.ServerPlan {
 	links := make(api.Links)
 
-	links["self"] = api.Link{Href: to(fmt.Sprintf("/plans/%s", plan.ID))}
+	links["self"] = api.Link{Href: to(fmt.Sprintf("/api/plans/%s", plan.ID))}
 
 	return api.ServerPlan{
 		Id:              &plan.ID,
@@ -27,7 +27,7 @@ func ToPlanCollectionResponse(result dto.PlanSearch, page, pageSize int) api.Pla
 		embeddedPlans[i] = ToPlan(*p)
 	}
 
-	collectionLinks := newPaginationLinks("/plans", page, pageSize, result.Meta.TotalPages, result.Meta.HasPrev, result.Meta.HasNext)
+	collectionLinks := newPaginationLinks("/api/plans", page, pageSize, result.Meta.TotalPages, result.Meta.HasPrev, result.Meta.HasNext)
 
 	pageMeta := &struct {
 		Number        *int   `json:"number,omitempty"`
