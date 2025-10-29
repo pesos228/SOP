@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -11,20 +12,21 @@ import (
 type ServerStatus string
 
 const (
-	StatusPending   ServerStatus = "PENDING"
-	StatusRunning   ServerStatus = "RUNNING"
-	StatusStopped   ServerStatus = "STOPPED"
-	StatusRebooting ServerStatus = "REBOOTING"
-	StatusDeleting  ServerStatus = "DELETING"
+	StatusPending         ServerStatus = "PENDING"
+	StatusRunning         ServerStatus = "RUNNING"
+	StatusStopped         ServerStatus = "STOPPED"
+	StatusRebooting       ServerStatus = "REBOOTING"
+	StatusDeleting        ServerStatus = "DELETING"
+	StatusProvisionFailed ServerStatus = "PROVISION_FAILED"
 )
 
 type Server struct {
 	BaseModel
-	//UserID    uuid.UUID    `gorm:"type:uuid;not null"`
-	PlanID    uuid.UUID    `gorm:"type:uuid;not null"`
-	Name      string       `gorm:"type:varchar(255);not null"`
-	Status    ServerStatus `gorm:"type:varchar(32);not null"`
-	CreatedAt time.Time    `gorm:"type:timestamptz;not null"`
+	IPv4Address *string      `gorm:"type:varchar(15)"`
+	PlanID      uuid.UUID    `gorm:"type:uuid;not null"`
+	Name        string       `gorm:"type:varchar(255);not null"`
+	Status      ServerStatus `gorm:"type:varchar(32);not null"`
+	CreatedAt   time.Time    `gorm:"type:timestamptz;not null"`
 }
 
 func NewServer(planID uuid.UUID, name string) (*Server, error) {
@@ -32,16 +34,12 @@ func NewServer(planID uuid.UUID, name string) (*Server, error) {
 	if trimmedName == "" {
 		return nil, fmt.Errorf("%w: server name cannot be empty", ErrValidation)
 	}
-	//if userID == uuid.Nil {
-	//	return nil, errors.New("userID cannot be nil")
-	//}
 	if planID == uuid.Nil {
 		return nil, fmt.Errorf("%w: planID cannot be nil", ErrValidation)
 	}
 
 	return &Server{
 		BaseModel: NewBaseModel(),
-		//UserID:    userID,
 		PlanID:    planID,
 		Name:      trimmedName,
 		Status:    StatusPending,
@@ -86,5 +84,27 @@ func (s *Server) MarkForDeletion() error {
 		return fmt.Errorf("%w: cannot delete server with status '%s', expected RUNNING or STOPPED", ErrValidation, s.Status)
 	}
 	s.Status = StatusDeleting
+	return nil
+}
+
+func (s *Server) ProvisionSucceeded(ipAddress string) error {
+	if s.Status != StatusPending {
+		return fmt.Errorf("%w: cannot mark as provisioned a server with status '%s', expected PENDING", ErrValidation, s.Status)
+	}
+	if net.ParseIP(ipAddress) == nil {
+		return fmt.Errorf("%w: invalid IP address format '%s'", ErrValidation, ipAddress)
+	}
+
+	s.Status = StatusStopped
+	s.IPv4Address = &ipAddress
+	return nil
+}
+
+func (s *Server) ProvisionFailed() error {
+	if s.Status != StatusPending {
+		return fmt.Errorf("%w: cannot mark as failed a server with status '%s', expected PENDING", ErrValidation, s.Status)
+	}
+
+	s.Status = StatusProvisionFailed
 	return nil
 }

@@ -44,12 +44,13 @@ type Query struct {
 }
 
 type Server struct {
-	ID        string       `json:"id"`
-	Name      string       `json:"name"`
-	Status    ServerStatus `json:"status"`
-	PlanID    string       `json:"planId"`
-	CreatedAt string       `json:"createdAt"`
-	Plan      *Plan        `json:"plan,omitempty"`
+	ID          string       `json:"id"`
+	Name        string       `json:"name"`
+	Status      ServerStatus `json:"status"`
+	PlanID      string       `json:"planId"`
+	IPv4Address *string      `json:"IPv4Address,omitempty"`
+	CreatedAt   string       `json:"createdAt"`
+	Plan        *Plan        `json:"plan,omitempty"`
 }
 
 type ServerCollection struct {
@@ -120,11 +121,12 @@ func (e ServerAction) MarshalJSON() ([]byte, error) {
 type ServerStatus string
 
 const (
-	ServerStatusPending   ServerStatus = "PENDING"
-	ServerStatusRunning   ServerStatus = "RUNNING"
-	ServerStatusStopped   ServerStatus = "STOPPED"
-	ServerStatusRebooting ServerStatus = "REBOOTING"
-	ServerStatusDeleting  ServerStatus = "DELETING"
+	ServerStatusPending         ServerStatus = "PENDING"
+	ServerStatusRunning         ServerStatus = "RUNNING"
+	ServerStatusStopped         ServerStatus = "STOPPED"
+	ServerStatusRebooting       ServerStatus = "REBOOTING"
+	ServerStatusDeleting        ServerStatus = "DELETING"
+	ServerStatusProvisionFailed ServerStatus = "PROVISION_FAILED"
 )
 
 var AllServerStatus = []ServerStatus{
@@ -133,11 +135,12 @@ var AllServerStatus = []ServerStatus{
 	ServerStatusStopped,
 	ServerStatusRebooting,
 	ServerStatusDeleting,
+	ServerStatusProvisionFailed,
 }
 
 func (e ServerStatus) IsValid() bool {
 	switch e {
-	case ServerStatusPending, ServerStatusRunning, ServerStatusStopped, ServerStatusRebooting, ServerStatusDeleting:
+	case ServerStatusPending, ServerStatusRunning, ServerStatusStopped, ServerStatusRebooting, ServerStatusDeleting, ServerStatusProvisionFailed:
 		return true
 	}
 	return false

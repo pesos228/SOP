@@ -271,9 +271,18 @@ components:
         status:
           {
             type: string,
-            enum: ["PENDING", "RUNNING", "STOPPED", "REBOOTING", "DELETING"],
+            enum:
+              [
+                "PENDING",
+                "RUNNING",
+                "STOPPED",
+                "REBOOTING",
+                "DELETING",
+                "PROVISION_FAILED",
+              ],
           }
         planId: { type: string, format: uuid }
+        IPv4Address: { type: string, format: ipv4 }
         createdAt: { type: string, format: date-time }
         _links:
           $ref: "#/components/schemas/Links"

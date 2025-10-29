@@ -4,6 +4,7 @@ enum ServerStatus {
   STOPPED
   REBOOTING
   DELETING
+  PROVISION_FAILED
 }
 
 enum ServerAction {
@@ -25,6 +26,7 @@ type Server {
   name: String!
   status: ServerStatus!
   planId: ID!
+  IPv4Address: String
   createdAt: String!
   plan: Plan
 }

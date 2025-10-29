@@ -13,10 +13,11 @@ func toGraphQLPlan(p dto.PlanPreview) *Plan {
 }
 func toGraphQLServer(s dto.ServerPreview) *Server {
 	return &Server{
-		ID:        s.ID.String(),
-		Name:      s.Name,
-		Status:    ServerStatus(s.Status),
-		PlanID:    s.PlanID.String(),
-		CreatedAt: s.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+		ID:          s.ID.String(),
+		Name:        s.Name,
+		Status:      ServerStatus(s.Status),
+		PlanID:      s.PlanID.String(),
+		IPv4Address: s.IPv4Address,
+		CreatedAt:   s.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
 	}
 }

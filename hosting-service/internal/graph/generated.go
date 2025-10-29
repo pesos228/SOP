@@ -76,12 +76,13 @@ type ComplexityRoot struct {
 	}
 
 	Server struct {
-		CreatedAt func(childComplexity int) int
-		ID        func(childComplexity int) int
-		Name      func(childComplexity int) int
-		Plan      func(childComplexity int) int
-		PlanID    func(childComplexity int) int
-		Status    func(childComplexity int) int
+		CreatedAt   func(childComplexity int) int
+		ID          func(childComplexity int) int
+		IPv4Address func(childComplexity int) int
+		Name        func(childComplexity int) int
+		Plan        func(childComplexity int) int
+		PlanID      func(childComplexity int) int
+		Status      func(childComplexity int) int
 	}
 
 	ServerCollection struct {
@@ -280,6 +281,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Server.ID(childComplexity), true
+	case "Server.IPv4Address":
+		if e.complexity.Server.IPv4Address == nil {
+			break
+		}
+
+		return e.complexity.Server.IPv4Address(childComplexity), true
 	case "Server.name":
 		if e.complexity.Server.Name == nil {
 			break
@@ -449,6 +456,7 @@ var sources = []*ast.Source{
   STOPPED
   REBOOTING
   DELETING
+  PROVISION_FAILED
 }
 
 enum ServerAction {
@@ -470,6 +478,7 @@ type Server {
   name: String!
   status: ServerStatus!
   planId: ID!
+  IPv4Address: String
   createdAt: String!
   plan: Plan
 }
@@ -763,6 +772,8 @@ func (ec *executionContext) fieldContext_Mutation_orderServer(ctx context.Contex
 				return ec.fieldContext_Server_status(ctx, field)
 			case "planId":
 				return ec.fieldContext_Server_planId(ctx, field)
+			case "IPv4Address":
+				return ec.fieldContext_Server_IPv4Address(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Server_createdAt(ctx, field)
 			case "plan":
@@ -818,6 +829,8 @@ func (ec *executionContext) fieldContext_Mutation_manageServer(ctx context.Conte
 				return ec.fieldContext_Server_status(ctx, field)
 			case "planId":
 				return ec.fieldContext_Server_planId(ctx, field)
+			case "IPv4Address":
+				return ec.fieldContext_Server_IPv4Address(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Server_createdAt(ctx, field)
 			case "plan":
@@ -1334,6 +1347,8 @@ func (ec *executionContext) fieldContext_Query_server(ctx context.Context, field
 				return ec.fieldContext_Server_status(ctx, field)
 			case "planId":
 				return ec.fieldContext_Server_planId(ctx, field)
+			case "IPv4Address":
+				return ec.fieldContext_Server_IPv4Address(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Server_createdAt(ctx, field)
 			case "plan":
@@ -1580,6 +1595,35 @@ func (ec *executionContext) fieldContext_Server_planId(_ context.Context, field 
 	return fc, nil
 }
 
+func (ec *executionContext) _Server_IPv4Address(ctx context.Context, field graphql.CollectedField, obj *Server) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Server_IPv4Address,
+		func(ctx context.Context) (any, error) {
+			return obj.IPv4Address, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Server_IPv4Address(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Server",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Server_createdAt(ctx context.Context, field graphql.CollectedField, obj *Server) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -1682,6 +1726,8 @@ func (ec *executionContext) fieldContext_ServerCollection_servers(_ context.Cont
 				return ec.fieldContext_Server_status(ctx, field)
 			case "planId":
 				return ec.fieldContext_Server_planId(ctx, field)
+			case "IPv4Address":
+				return ec.fieldContext_Server_IPv4Address(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Server_createdAt(ctx, field)
 			case "plan":
@@ -3689,6 +3735,8 @@ func (ec *executionContext) _Server(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "IPv4Address":
+			out.Values[i] = ec._Server_IPv4Address(ctx, field, obj)
 		case "createdAt":
 			out.Values[i] = ec._Server_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

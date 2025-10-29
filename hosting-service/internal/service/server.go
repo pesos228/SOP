@@ -3,9 +3,14 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"hosting-service/internal/domain"
 	"hosting-service/internal/dto"
+	"hosting-service/internal/messaging"
 	"hosting-service/internal/repository"
+	"log"
+
+	events "hosting-events-contract"
 
 	"github.com/google/uuid"
 )
@@ -39,10 +44,46 @@ type ServerService interface {
 	Search(ctx context.Context, page, pageSize int) (*dto.ServerSearch, error)
 	FindByID(ctx context.Context, ID uuid.UUID) (*dto.ServerPreview, error)
 	PerformAction(ctx context.Context, params PerformActionParams) (*dto.ServerPreview, error)
+	HandleProvisionSuccess(ctx context.Context, event events.ServerProvisionedEvent) error
+	HandleProvisionFailure(ctx context.Context, event events.ServerProvisionFailedEvent) error
 }
 
 type serverServiceImpl struct {
 	serverRepository repository.ServerRepository
+	planRepository   repository.PlanRepository
+	publisher        *messaging.EventPublisher
+}
+
+func (s *serverServiceImpl) HandleProvisionFailure(ctx context.Context, event events.ServerProvisionFailedEvent) error {
+	server, err := s.serverRepository.FindByID(ctx, event.ServerID)
+	if err != nil {
+		log.Printf("ERROR: received provision failure for non-existent server %s", event.ServerID)
+		return err
+	}
+
+	if err := server.ProvisionFailed(); err != nil {
+		log.Printf("WARN: could not apply provision failure to server %s (current status: %s): %v", server.ID, server.Status, err)
+		return nil
+	}
+
+	log.Printf("Updating server %s status to PROVISION_FAILED. Reason: %s", server.ID, event.Reason)
+	return s.serverRepository.Save(ctx, server)
+}
+
+func (s *serverServiceImpl) HandleProvisionSuccess(ctx context.Context, event events.ServerProvisionedEvent) error {
+	server, err := s.serverRepository.FindByID(ctx, event.ServerID)
+	if err != nil {
+		log.Printf("ERROR: received provision success for non-existent server %s", event.ServerID)
+		return err
+	}
+
+	if err := server.ProvisionSucceeded(event.IPv4Address); err != nil {
+		log.Printf("WARN: could not apply provision success to server %s (current status: %s): %v", server.ID, server.Status, err)
+		return nil
+	}
+
+	log.Printf("Updating server %s status to STOPPED with IP %s", server.ID, event.IPv4Address)
+	return s.serverRepository.Save(ctx, server)
 }
 
 func (s *serverServiceImpl) FindByID(ctx context.Context, ID uuid.UUID) (*dto.ServerPreview, error) {
@@ -54,13 +95,7 @@ func (s *serverServiceImpl) FindByID(ctx context.Context, ID uuid.UUID) (*dto.Se
 		return nil, err
 	}
 
-	return &dto.ServerPreview{
-		ID:        server.ID,
-		PlanID:    server.PlanID,
-		Name:      server.Name,
-		Status:    string(server.Status),
-		CreatedAt: server.CreatedAt,
-	}, nil
+	return dto.NewServerPreview(server), nil
 }
 
 func (s *serverServiceImpl) PerformAction(ctx context.Context, params PerformActionParams) (*dto.ServerPreview, error) {
@@ -95,16 +130,15 @@ func (s *serverServiceImpl) PerformAction(ctx context.Context, params PerformAct
 		return nil, err
 	}
 
-	return &dto.ServerPreview{
-		ID:        server.ID,
-		PlanID:    server.PlanID,
-		Name:      server.Name,
-		Status:    string(server.Status),
-		CreatedAt: server.CreatedAt,
-	}, nil
+	return dto.NewServerPreview(server), nil
 }
 
 func (s *serverServiceImpl) Save(ctx context.Context, params CreateServerParams) (*dto.ServerPreview, error) {
+	plan, err := s.planRepository.FindByID(ctx, params.PlanID)
+	if err != nil {
+		return nil, fmt.Errorf("plan with id %s not found: %w", params.PlanID, err)
+	}
+
 	server, err := domain.NewServer(params.PlanID, params.Name)
 	if err != nil {
 		if errors.Is(err, domain.ErrValidation) {
@@ -118,13 +152,20 @@ func (s *serverServiceImpl) Save(ctx context.Context, params CreateServerParams)
 		return nil, err
 	}
 
-	return &dto.ServerPreview{
-		ID:        server.ID,
-		PlanID:    server.PlanID,
-		Name:      server.Name,
-		Status:    string(server.Status),
-		CreatedAt: server.CreatedAt,
-	}, nil
+	command := events.ProvisionServerCommand{
+		ServerID: server.ID,
+		Hostname: server.Name,
+		CPUCores: plan.CPUCores,
+		RAMMB:    plan.RAMMB,
+		DiskGB:   plan.DiskGB,
+	}
+
+	if err := s.publisher.Publish(command, events.ProvisionRequestKey); err != nil {
+		log.Printf("CRITICAL: failed to publish provision command for server %s: %v", server.ID, err)
+		return nil, fmt.Errorf("internal error: failed to queue server for provisioning")
+	}
+
+	return dto.NewServerPreview(server), nil
 }
 
 func (s *serverServiceImpl) Search(ctx context.Context, page int, pageSize int) (*dto.ServerSearch, error) {
@@ -136,13 +177,7 @@ func (s *serverServiceImpl) Search(ctx context.Context, page int, pageSize int) 
 
 	data := make([]*dto.ServerPreview, len(servers))
 	for i, server := range servers {
-		data[i] = &dto.ServerPreview{
-			ID:        server.ID,
-			PlanID:    server.PlanID,
-			Name:      server.Name,
-			Status:    string(server.Status),
-			CreatedAt: server.CreatedAt,
-		}
+		data[i] = dto.NewServerPreview(server)
 	}
 
 	return &dto.ServerSearch{
@@ -151,6 +186,9 @@ func (s *serverServiceImpl) Search(ctx context.Context, page int, pageSize int) 
 	}, nil
 }
 
-func NewServerService(serverRepository repository.ServerRepository) ServerService {
-	return &serverServiceImpl{serverRepository: serverRepository}
+func NewServerService(serverRepository repository.ServerRepository, planRepository repository.PlanRepository, publisher *messaging.EventPublisher) ServerService {
+	return &serverServiceImpl{
+		serverRepository: serverRepository,
+		planRepository:   planRepository,
+		publisher:        publisher}
 }

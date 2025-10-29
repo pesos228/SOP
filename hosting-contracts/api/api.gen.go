@@ -18,11 +18,12 @@ import (
 
 // Defines values for ServerStatus.
 const (
-	DELETING  ServerStatus = "DELETING"
-	PENDING   ServerStatus = "PENDING"
-	REBOOTING ServerStatus = "REBOOTING"
-	RUNNING   ServerStatus = "RUNNING"
-	STOPPED   ServerStatus = "STOPPED"
+	DELETING        ServerStatus = "DELETING"
+	PENDING         ServerStatus = "PENDING"
+	PROVISIONFAILED ServerStatus = "PROVISION_FAILED"
+	REBOOTING       ServerStatus = "REBOOTING"
+	RUNNING         ServerStatus = "RUNNING"
+	STOPPED         ServerStatus = "STOPPED"
 )
 
 // Defines values for ServerActionRequestAction.
@@ -71,6 +72,8 @@ type PlanCollectionResponse struct {
 
 // Server defines model for Server.
 type Server struct {
+	IPv4Address *string `json:"IPv4Address,omitempty"`
+
 	// UnderscoreLinks Контейнер для гипермедиа-ссылок.
 	UnderscoreLinks *Links              `json:"_links,omitempty"`
 	CreatedAt       time.Time           `json:"createdAt"`

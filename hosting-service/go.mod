@@ -7,7 +7,9 @@ require (
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/google/uuid v1.6.0
 	github.com/vektah/gqlparser/v2 v2.5.30
+	github.com/wagslane/go-rabbitmq v0.15.0
 	hosting-contracts v0.0.0
+	hosting-events-contract v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -26,6 +28,7 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
+	github.com/rabbitmq/amqp091-go v1.10.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/sosodev/duration v1.3.1 // indirect
 	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
@@ -49,3 +52,5 @@ require (
 )
 
 replace hosting-contracts => ../hosting-contracts
+
+replace hosting-events-contract => ../hosting-events-contract

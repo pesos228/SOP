@@ -28,6 +28,7 @@ func ToServer(server dto.ServerPreview) api.Server {
 
 	return api.Server{Id: &server.ID,
 		Name:            server.Name,
+		IPv4Address:     server.IPv4Address,
 		PlanId:          server.PlanID,
 		Status:          api.ServerStatus(server.Status),
 		CreatedAt:       server.CreatedAt,

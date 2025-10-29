@@ -40,13 +40,7 @@ func (p *planServiceImpl) FindByID(ctx context.Context, ID uuid.UUID) (*dto.Plan
 		return nil, err
 	}
 
-	return &dto.PlanPreview{
-		ID:       plan.ID,
-		Name:     plan.Name,
-		CPUCores: plan.CPUCores,
-		RAMMB:    plan.RAMMB,
-		DiskGB:   plan.DiskGB,
-	}, nil
+	return dto.NewPlanPreview(plan), nil
 }
 
 func (p *planServiceImpl) Save(ctx context.Context, params CreatePlanParams) (*dto.PlanPreview, error) {
@@ -67,13 +61,7 @@ func (p *planServiceImpl) Save(ctx context.Context, params CreatePlanParams) (*d
 		return nil, err
 	}
 
-	return &dto.PlanPreview{
-		ID:       plan.ID,
-		Name:     plan.Name,
-		CPUCores: params.CPUCores,
-		RAMMB:    params.RAMMB,
-		DiskGB:   params.DiskGB,
-	}, nil
+	return dto.NewPlanPreview(plan), nil
 }
 
 func (p *planServiceImpl) Search(ctx context.Context, page int, pageSize int) (*dto.PlanSearch, error) {
@@ -85,13 +73,7 @@ func (p *planServiceImpl) Search(ctx context.Context, page int, pageSize int) (*
 
 	data := make([]*dto.PlanPreview, len(plans))
 	for i, plan := range plans {
-		data[i] = &dto.PlanPreview{
-			ID:       plan.ID,
-			Name:     plan.Name,
-			CPUCores: plan.CPUCores,
-			RAMMB:    plan.RAMMB,
-			DiskGB:   plan.DiskGB,
-		}
+		data[i] = dto.NewPlanPreview(plan)
 	}
 
 	return &dto.PlanSearch{

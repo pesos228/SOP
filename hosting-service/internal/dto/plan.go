@@ -1,6 +1,10 @@
 package dto
 
-import "github.com/google/uuid"
+import (
+	"hosting-service/internal/domain"
+
+	"github.com/google/uuid"
+)
 
 type PlanPreview struct {
 	ID       uuid.UUID `json:"id"`
@@ -13,4 +17,14 @@ type PlanPreview struct {
 type PlanSearch struct {
 	Data []*PlanPreview   `json:"data"`
 	Meta PaginationResult `json:"meta"`
+}
+
+func NewPlanPreview(plan *domain.Plan) *PlanPreview {
+	return &PlanPreview{
+		ID:       plan.ID,
+		Name:     plan.Name,
+		CPUCores: plan.CPUCores,
+		RAMMB:    plan.RAMMB,
+		DiskGB:   plan.DiskGB,
+	}
 }
