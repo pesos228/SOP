@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"hosting-service/internal/domain"
-	"hosting-service/internal/dto"
-	"hosting-service/internal/messaging"
-	"hosting-service/internal/repository"
+	events "hosting-events-contract"
+	"hosting-kit/messaging"
 	"log"
 
-	events "hosting-events-contract"
+	"hosting-service/internal/domain"
+	"hosting-service/internal/dto"
+	"hosting-service/internal/repository"
 
 	"github.com/google/uuid"
 )
@@ -51,7 +51,7 @@ type ServerService interface {
 type serverServiceImpl struct {
 	serverRepository repository.ServerRepository
 	planRepository   repository.PlanRepository
-	publisher        *messaging.EventPublisher
+	publisher        *messaging.MessageManager
 }
 
 func (s *serverServiceImpl) HandleProvisionFailure(ctx context.Context, event events.ServerProvisionFailedEvent) error {
@@ -125,7 +125,6 @@ func (s *serverServiceImpl) PerformAction(ctx context.Context, params PerformAct
 	}
 
 	err = s.serverRepository.Save(ctx, server)
-
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +159,7 @@ func (s *serverServiceImpl) Save(ctx context.Context, params CreateServerParams)
 		DiskGB:   plan.DiskGB,
 	}
 
-	if err := s.publisher.Publish(command, events.ProvisionRequestKey); err != nil {
+	if err := s.publisher.Publish(events.CommandsExchange, events.ProvisionRequestKey, command); err != nil {
 		log.Printf("CRITICAL: failed to publish provision command for server %s: %v", server.ID, err)
 		return nil, fmt.Errorf("internal error: failed to queue server for provisioning")
 	}
@@ -170,7 +169,6 @@ func (s *serverServiceImpl) Save(ctx context.Context, params CreateServerParams)
 
 func (s *serverServiceImpl) Search(ctx context.Context, page int, pageSize int) (*dto.ServerSearch, error) {
 	servers, count, err := s.serverRepository.FindAll(ctx, page, pageSize)
-
 	if err != nil {
 		return nil, err
 	}
@@ -186,9 +184,10 @@ func (s *serverServiceImpl) Search(ctx context.Context, page int, pageSize int) 
 	}, nil
 }
 
-func NewServerService(serverRepository repository.ServerRepository, planRepository repository.PlanRepository, publisher *messaging.EventPublisher) ServerService {
+func NewServerService(serverRepository repository.ServerRepository, planRepository repository.PlanRepository, publisher *messaging.MessageManager) ServerService {
 	return &serverServiceImpl{
 		serverRepository: serverRepository,
 		planRepository:   planRepository,
-		publisher:        publisher}
+		publisher:        publisher,
+	}
 }

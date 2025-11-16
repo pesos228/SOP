@@ -2,20 +2,18 @@ package app
 
 import (
 	"context"
-	"hosting-service/internal/config"
-	"hosting-service/internal/messaging"
-	"hosting-service/internal/repository"
-	"hosting-service/internal/repository/psql"
-	"hosting-service/internal/service"
+	"hosting-kit/messaging"
 	"log"
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
-	"github.com/wagslane/go-rabbitmq"
+	"hosting-service/internal/config"
+	"hosting-service/internal/repository/psql"
+	"hosting-service/internal/service"
+
 	"gorm.io/gorm"
-
-	events "hosting-events-contract"
 )
 
 type App struct {
@@ -24,11 +22,6 @@ type App struct {
 
 func New(cfg *config.Config) *App {
 	return &App{config: cfg}
-}
-
-type repositories struct {
-	planRepository   repository.PlanRepository
-	serverRepository repository.ServerRepository
 }
 
 type services struct {
@@ -42,20 +35,19 @@ func (a *App) Run() {
 		log.Fatalf("Database initialization failed: %v", err)
 	}
 
-	conn, err := a.initRabbitMQ()
+	var wg sync.WaitGroup
+
+	rabbit, err := a.initRabbitManager(&wg)
 	if err != nil {
 		log.Fatalf("RabbitMQ initialization failed: %v", err)
 	}
 
-	publisher, _, services := buildDependencies(db, conn)
-	defer publisher.Close()
+	services := buildDependencies(db, rabbit)
 
 	shutdownCtx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	var wg sync.WaitGroup
-
-	a.runMessageConsumers(shutdownCtx, &wg, conn, services.serverService)
+	a.runConsumers(rabbit, services.serverService)
 
 	httpServer := a.runHTTPServer(&wg, services)
 
@@ -65,31 +57,31 @@ func (a *App) Run() {
 	<-shutdownCtx.Done()
 	log.Println("Shutting down application gracefully...")
 
-	shutdownHTTPServer(httpServer)
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	log.Println("Closing HTTP server...")
+
+	if err := httpServer.Shutdown(timeoutCtx); err != nil {
+		log.Printf("HTTP server shutdown error: %v", err)
+	}
 
 	log.Println("Closing RabbitMQ consumer...")
+
+	rabbit.Stop(timeoutCtx)
 
 	wg.Wait()
 }
 
-func buildDependencies(db *gorm.DB, conn *rabbitmq.Conn) (*messaging.EventPublisher, repositories, services) {
+func buildDependencies(db *gorm.DB, rabbit *messaging.MessageManager) services {
 	planRepository := psql.NewPlanRepository(db)
 	serverRepository := psql.NewServerRepository(db)
 
-	cmdPublisher, err := messaging.NewEventPublisher(conn, events.CommandsExchange)
-	if err != nil {
-		log.Fatalf("Failed to create publisher: %v", err)
-	}
-
 	planService := service.NewPlanService(planRepository)
-	serverService := service.NewServerService(serverRepository, planRepository, cmdPublisher)
+	serverService := service.NewServerService(serverRepository, planRepository, rabbit)
 
-	return cmdPublisher, repositories{
-			planRepository:   planRepository,
-			serverRepository: serverRepository,
-		},
-		services{
-			planService:   planService,
-			serverService: serverService,
-		}
+	return services{
+		planService:   planService,
+		serverService: serverService,
+	}
 }

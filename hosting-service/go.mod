@@ -10,6 +10,7 @@ require (
 	github.com/wagslane/go-rabbitmq v0.15.0
 	hosting-contracts v0.0.0
 	hosting-events-contract v0.0.0-00010101000000-000000000000
+	hosting-kit v0.0.0
 )
 
 require (
@@ -54,3 +55,5 @@ require (
 replace hosting-contracts => ../hosting-contracts
 
 replace hosting-events-contract => ../hosting-events-contract
+
+replace hosting-kit => ../hosting-kit

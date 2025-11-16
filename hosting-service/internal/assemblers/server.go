@@ -3,6 +3,8 @@ package assemblers
 import (
 	"fmt"
 	"hosting-contracts/api"
+
+	"hosting-service/internal/domain"
 	"hosting-service/internal/dto"
 )
 
@@ -14,19 +16,20 @@ func ToServer(server dto.ServerPreview) api.Server {
 	actionsHref := to(fmt.Sprintf("/api/servers/%s/actions", server.ID.String()))
 
 	switch server.Status {
-	case "RUNNING":
+	case string(domain.StatusRunning):
 		links["stop"] = api.Link{Href: actionsHref}
 		links["reboot"] = api.Link{Href: actionsHref}
 
-	case "STOPPED":
+	case string(domain.StatusStopped):
 		links["start"] = api.Link{Href: actionsHref}
 		links["delete"] = api.Link{Href: actionsHref}
 
-	case "PENDING", "REBOOTING", "DELETING":
+	case string(domain.StatusPending), string(domain.StatusRebooting), string(domain.StatusDeleting):
 		break
 	}
 
-	return api.Server{Id: &server.ID,
+	return api.Server{
+		Id:              &server.ID,
 		Name:            server.Name,
 		IPv4Address:     server.IPv4Address,
 		PlanId:          server.PlanID,

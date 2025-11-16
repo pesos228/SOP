@@ -1,17 +1,16 @@
 package app
 
 import (
-	"context"
 	"fmt"
 	"hosting-contracts/api"
+	"log"
+	"net/http"
+	"sync"
+
 	"hosting-service/internal/graph"
 	"hosting-service/internal/handlers"
 	"hosting-service/internal/middleware"
 	"hosting-service/internal/service"
-	"log"
-	"net/http"
-	"sync"
-	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -37,14 +36,6 @@ func (a *App) runHTTPServer(wg *sync.WaitGroup, services services) *http.Server 
 	return srv
 }
 
-func shutdownHTTPServer(srv *http.Server) {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := srv.Shutdown(timeoutCtx); err != nil {
-		log.Printf("HTTP server shutdown error: %v", err)
-	}
-}
-
 func (a *App) setupRouter(planService service.PlanService, serverService service.ServerService) *chi.Mux {
 	graphqlResolver := &graph.Resolver{
 		PlanService:   planService,
@@ -66,7 +57,9 @@ func (a *App) setupRouter(planService service.PlanService, serverService service
 
 	router.Get("/swagger/doc.yaml", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/x-yaml")
-		w.Write(api.OpenApiSpec)
+		if _, err := w.Write(api.OpenApiSpec); err != nil {
+			log.Printf("Error writing OpenAPI spec: %v", err)
+		}
 	})
 	router.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL(fmt.Sprintf("http://localhost%s/swagger/doc.yaml", a.config.HTTP_Port)),
