@@ -12,7 +12,7 @@ import (
 	"github.com/wagslane/go-rabbitmq"
 )
 
-type MessageHandler func(ctx context.Context, body []byte) error
+type MessageHandler func(ctx context.Context, body []byte, routingKey string) error
 
 type MessageManager struct {
 	conn           *rabbitmq.Conn
@@ -62,18 +62,26 @@ func NewMessageManager(url string, exchanges []ExchangeConfig, wg *sync.WaitGrou
 	}, nil
 }
 
-func (m *MessageManager) Subscribe(queueName, routingKey, exchangeName string,
-	exchangeType ExchangeType, handler MessageHandler,
+func (m *MessageManager) Subscribe(queueName, routingKey, exchangeName string, handler MessageHandler, dlq *DLQConfig,
 ) error {
+
+	opts := []func(*rabbitmq.ConsumerOptions){
+		rabbitmq.WithConsumerOptionsRoutingKey(routingKey),
+		rabbitmq.WithConsumerOptionsExchangeName(exchangeName),
+		rabbitmq.WithConsumerOptionsQueueDurable,
+	}
+
+	if dlq != nil {
+		opts = append(opts, rabbitmq.WithConsumerOptionsQueueArgs(map[string]interface{}{
+			"x-dead-letter-exchange":    dlq.ExchangeName,
+			"x-dead-letter-routing-key": dlq.RoutingKey,
+		}))
+	}
+
 	consumer, err := rabbitmq.NewConsumer(
 		m.conn,
 		queueName,
-		rabbitmq.WithConsumerOptionsRoutingKey(routingKey),
-		rabbitmq.WithConsumerOptionsExchangeName(exchangeName),
-		rabbitmq.WithConsumerOptionsExchangeDeclare,
-		rabbitmq.WithConsumerOptionsExchangeKind(string(exchangeType)),
-		rabbitmq.WithConsumerOptionsQueueDurable,
-		rabbitmq.WithConsumerOptionsExchangeDurable,
+		opts...,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create consumer: %w", err)
@@ -87,7 +95,7 @@ func (m *MessageManager) Subscribe(queueName, routingKey, exchangeName string,
 		ctx, cancel := context.WithTimeout(context.Background(), m.handlerTimeout)
 		defer cancel()
 
-		err := handler(ctx, d.Body)
+		err := handler(ctx, d.Body, d.RoutingKey)
 
 		if err == nil {
 			return rabbitmq.Ack

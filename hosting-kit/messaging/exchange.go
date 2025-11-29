@@ -13,3 +13,8 @@ type ExchangeConfig struct {
 	Name string
 	Type ExchangeType
 }
+
+type DLQConfig struct {
+	ExchangeName string
+	RoutingKey   string
+}

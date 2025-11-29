@@ -24,7 +24,12 @@ func NewProvisioningListener(provisioningTime time.Duration, provisioningService
 	}
 }
 
-func (pl *ProvisioningListener) Handle(ctx context.Context, body []byte) error {
+func (pl *ProvisioningListener) Handle(ctx context.Context, body []byte, routingKey string) error {
+
+	if routingKey != events.ProvisionRequestKey {
+		return fmt.Errorf("%w: unknown routing key: %s", messaging.ErrPermanentFailure, routingKey)
+	}
+
 	var cmd events.ProvisionServerCommand
 	if err := json.Unmarshal(body, &cmd); err != nil {
 		log.Printf("ERROR: failed to unmarshal command: %v. Message will be dropped.", err)
@@ -41,7 +46,7 @@ func (pl *ProvisioningListener) Handle(ctx context.Context, body []byte) error {
 		return fmt.Errorf("shutdown signal received")
 	}
 
-	if rand.Intn(5) == 0 {
+	if rand.Intn(1) == 0 {
 		return pl.provessionService.HandleProvisionFailure(cmd.ServerID)
 	}
 

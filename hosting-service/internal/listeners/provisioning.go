@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"hosting-kit/messaging"
 	"hosting-service/internal/service"
 
 	events "hosting-events-contract"
@@ -20,6 +21,17 @@ func NewProvisioningResultListener(svc service.ServerService) *ProvisioningResul
 	}
 
 	return listener
+}
+
+func (l *ProvisioningResultListener) Handle(ctx context.Context, body []byte, routingKey string) error {
+	switch routingKey {
+	case events.ProvisionSucceededKey:
+		return l.HandleSuccess(ctx, body)
+	case events.ProvisionFailedKey:
+		return l.HandleFailure(ctx, body)
+	default:
+		return fmt.Errorf("%w: unknown routing key: %s", messaging.ErrPermanentFailure, routingKey)
+	}
 }
 
 func (l *ProvisioningResultListener) HandleSuccess(ctx context.Context, body []byte) error {

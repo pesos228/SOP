@@ -19,6 +19,10 @@ func (a *App) initRabbitManager(wg *sync.WaitGroup) (*messaging.MessageManager, 
 			Name: events.EventsExchange,
 			Type: messaging.ExchangeTopic,
 		},
+		{
+			Name: events.DLXExchange,
+			Type: messaging.ExchangeDirect,
+		},
 	}
 	return messaging.NewMessageManager(a.config.AMQP_URL, exchanges, wg, a.config.AMQP_HandlerTimeout)
 }
@@ -30,8 +34,8 @@ func (a *App) runConsumers(rabbit *messaging.MessageManager, service service.Pro
 		a.config.ProvisionQueue,
 		events.ProvisionRequestKey,
 		events.CommandsExchange,
-		messaging.ExchangeDirect,
 		provisioningListener.Handle,
+		nil,
 	)
 	if err != nil {
 		log.Fatalf("Failed to create consumer: %v", err)
