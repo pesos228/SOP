@@ -18,6 +18,10 @@ var (
 	ErrValidation     = errors.New("validation error")
 )
 
+type PlanFinder interface {
+	FindByID(ctx context.Context, ID uuid.UUID) (plan.Plan, error)
+}
+
 type Storer interface {
 	FindByID(ctx context.Context, ID uuid.UUID) (Server, error)
 	Create(ctx context.Context, server Server) error
@@ -32,11 +36,11 @@ type Provisioner interface {
 
 type Business struct {
 	storer      Storer
-	planBus     *plan.Business
+	planBus     PlanFinder
 	provisioner Provisioner
 }
 
-func NewBusiness(storer Storer, planBus *plan.Business, provisioner Provisioner) *Business {
+func NewBusiness(storer Storer, planBus PlanFinder, provisioner Provisioner) *Business {
 	return &Business{
 		storer:      storer,
 		planBus:     planBus,

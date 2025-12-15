@@ -16,23 +16,19 @@ type Config struct {
 	ServerBus *server.Business
 }
 
-func NewHandler(cfg Config) http.Handler {
-	router := chi.NewRouter()
-
+func RegisterRoutes(router *chi.Mux, cfg Config) {
 	apiImpl := New(cfg.PlanBus, cfg.ServerBus)
-
 	strictHandler := api.NewStrictHandler(apiImpl, nil)
 
-	api.HandlerFromMux(strictHandler, router)
+	router.Route("/api", func(r chi.Router) {
+		r.Get("/swagger/*", httpSwagger.Handler(
+			httpSwagger.URL("/api/swagger/doc.yaml"),
+		))
+		r.Get("/swagger/doc.yaml", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/x-yaml")
+			w.Write(api.OpenApiSpec)
+		})
 
-	router.Get("/swagger/*", httpSwagger.Handler(
-		httpSwagger.URL("/api/swagger/doc.yaml"),
-	))
-
-	router.Get("/swagger/doc.yaml", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/x-yaml")
-		w.Write(api.OpenApiSpec)
+		api.HandlerFromMux(strictHandler, r)
 	})
-
-	return router
 }

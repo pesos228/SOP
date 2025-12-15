@@ -7,15 +7,19 @@ import (
 	"hosting-events-contract/topology"
 	"hosting-kit/messaging"
 	"hosting-provisioning-service/cmd/server/queue"
+	"hosting-provisioning-service/cmd/server/system"
 	"hosting-provisioning-service/internal/provisioning"
 	"hosting-provisioning-service/internal/provisioning/stores/provisionmsg"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/ardanlabs/conf/v3"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/joho/godotenv"
 )
 
@@ -42,6 +46,9 @@ func run(ctx context.Context) error {
 		App struct {
 			ProvisioningTime time.Duration `conf:"default:10s"`
 			ShutdownTimeout  time.Duration `conf:"default:20s"`
+		}
+		Web struct {
+			MetricsAddr string `conf:"default:0.0.0.0:7070,env:HTTP_PORT"`
 		}
 	}{}
 
@@ -94,11 +101,39 @@ func run(ctx context.Context) error {
 		}
 	}()
 
+	mux := chi.NewRouter()
+	mux.Use(middleware.Logger)
+
+	system.RegisterRoutes(mux)
+
+	metricsServer := http.Server{
+		Addr:    cfg.Web.MetricsAddr,
+		Handler: mux,
+	}
+
+	metricsErrors := make(chan error, 1)
+
+	go func() {
+		log.Printf("main: HTTP API listening on %s", metricsServer.Addr)
+		metricsErrors <- metricsServer.ListenAndServe()
+	}()
+
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
-	<-shutdown
-	log.Println("Shutdown signal received, exiting...")
+	select {
+	case err := <-metricsErrors:
+		return fmt.Errorf("metrics error: %w", err)
+	case sig := <-shutdown:
+		log.Printf("main: %v : Start shutdown", sig)
+		ctxShut, cancel := context.WithTimeout(context.Background(), cfg.App.ShutdownTimeout)
+		defer cancel()
+
+		if err := metricsServer.Shutdown(ctxShut); err != nil {
+			metricsServer.Close()
+			return fmt.Errorf("could not stop http server gracefully: %w", err)
+		}
+	}
 
 	return nil
 }

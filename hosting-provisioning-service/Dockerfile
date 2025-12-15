@@ -1,15 +1,28 @@
 FROM golang:1.24.4-alpine AS builder
-RUN apk add --no-cache ca-certificates tzdata
-WORKDIR /app
-COPY . .
-WORKDIR /app/hosting-provisioning-service
+
+WORKDIR /build
+
+COPY hosting-provisioning-service/go.mod hosting-provisioning-service/go.sum ./hosting-provisioning-service/
+COPY hosting-events-contract/go.mod hosting-events-contract/go.sum ./hosting-events-contract/
+COPY hosting-kit/go.mod hosting-kit/go.sum ./hosting-kit/
+
+WORKDIR /build/hosting-provisioning-service
 RUN go mod download
+
+WORKDIR /build
+COPY hosting-events-contract/ ./hosting-events-contract/
+COPY hosting-kit/ ./hosting-kit/
+COPY hosting-provisioning-service/ ./hosting-provisioning-service/
+
+WORKDIR /build/hosting-provisioning-service
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /server cmd/server/main.go
 
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM alpine:3.21
 
-COPY --from=builder --chown=nonroot:nonroot --chmod=755 /server /server
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
-USER nonroot
+COPY --from=builder /server /server
 
+USER appuser
+EXPOSE 8080
 CMD ["/server"]

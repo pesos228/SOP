@@ -9,6 +9,7 @@ import (
 	graph "hosting-service/cmd/server/graphql"
 	"hosting-service/cmd/server/queue"
 	"hosting-service/cmd/server/rest"
+	"hosting-service/cmd/server/system"
 	"hosting-service/internal/plan"
 	"hosting-service/internal/plan/stores/plandb"
 	"hosting-service/internal/platform/database"
@@ -130,20 +131,20 @@ func run(ctx context.Context) error {
 	mux := chi.NewRouter()
 
 	mux.Use(middleware.Recoverer)
-	mux.Use(mid.Logger)
+	mux.Use(middleware.Logger)
 	mux.Use(mid.Performance)
 
-	restHandler := rest.NewHandler(rest.Config{
+	rest.RegisterRoutes(mux, rest.Config{
 		PlanBus:   planBus,
 		ServerBus: serverBus,
 	})
-	mux.Mount("/api", restHandler)
 
-	graphHandler := graph.NewHandler(graph.HandlerConfig{
+	graph.RegisterRoutes(mux, graph.HandlerConfig{
 		PlanBus:   planBus,
 		ServerBus: serverBus,
 	})
-	mux.Mount("/graphql", graphHandler)
+
+	system.RegisterRoutes(mux)
 
 	api := http.Server{
 		Addr:         cfg.Web.APIHost,
