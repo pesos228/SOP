@@ -9,11 +9,40 @@ pipeline {
                 checkout scm
             }
         }
+        stage('Ensure Infrastructure') {
+            steps {
+                script {
+                    echo "Проверяем и запускаем инфраструктуру (postgres, rabbitmq, grafana)..."
+                    withCredentials([
+                        string(credentialsId: 'sop-postgres-user', variable: 'POSTGRES_USER'),
+                        string(credentialsId: 'sop-postgres-password', variable: 'POSTGRES_PASSWORD'),
+                        string(credentialsId: 'sop-postgres-db', variable: 'POSTGRES_DB'),
+                        string(credentialsId: 'sop-rabbitmq-user', variable: 'RABBITMQ_USER'),
+                        string(credentialsId: 'sop-rabbitmq-pass', variable: 'RABBITMQ_PASS'),
+                        string(credentialsId: 'sop-grafana-user', variable: 'GRAFANA_USER'),
+                        string(credentialsId: 'sop-grafana-password', variable: 'GRAFANA_PASSWORD')
+                    ]) {
+                        sh 'docker-compose up -d postgres rabbitmq grafana'
+                    }
+                }
+            }
+        }
         stage('Test (CI)') {
             steps {
                 script {
                     echo "Запуск тестов..."
                     sh 'docker build -f Dockerfile.test .'
+                }
+            }
+        }
+        stage('Build') {
+            steps {
+                script {
+                    echo "Собираем образы приложений..."
+                    withCredentials([
+                    ]) {
+                        sh 'docker-compose build'
+                    }
                 }
             }
         }
@@ -56,7 +85,7 @@ pipeline {
                         string(credentialsId: 'sop-grafana-user', variable: 'GRAFANA_USER'),
                         string(credentialsId: 'sop-grafana-password', variable: 'GRAFANA_PASSWORD')
                     ]) {
-                        sh 'docker-compose up -d --build'
+                        sh 'docker-compose up -d --no-deps hosting-service provisioning-service prometheus'
                     }
                 }
             }
