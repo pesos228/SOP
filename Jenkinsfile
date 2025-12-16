@@ -43,10 +43,7 @@ pipeline {
             steps {
                 script {
                     echo "Собираем образы приложений..."
-                    withCredentials([
-                    ]) {
-                        sh 'docker-compose build'
-                    }
+                    sh 'docker-compose build'
                 }
             }
         }
