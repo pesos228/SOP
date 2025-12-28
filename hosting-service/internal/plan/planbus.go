@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"hosting-service/internal/platform/page"
+	"hosting-kit/page"
 	"strings"
 
 	"github.com/google/uuid"
@@ -61,7 +61,7 @@ func NewPlan(params CreatePlanParams) (Plan, error) {
 func (b *Business) FindByID(ctx context.Context, ID uuid.UUID) (Plan, error) {
 	plan, err := b.storer.FindByID(ctx, ID)
 	if err != nil {
-		return Plan{}, err
+		return Plan{}, fmt.Errorf("findbyid: %w", err)
 	}
 
 	return plan, nil
@@ -76,7 +76,7 @@ func (b *Business) Create(ctx context.Context, params CreatePlanParams) (Plan, e
 	err = b.storer.Create(ctx, plan)
 
 	if err != nil {
-		return Plan{}, err
+		return Plan{}, fmt.Errorf("create: %w", err)
 	}
 
 	return plan, nil
@@ -86,7 +86,7 @@ func (b *Business) Search(ctx context.Context, pg page.Page) ([]Plan, int, error
 	plans, total, err := b.storer.FindAll(ctx, pg)
 
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("search: %w", err)
 	}
 
 	return plans, total, nil

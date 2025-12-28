@@ -3,7 +3,6 @@ WORKDIR /build
 
 COPY hosting-service/go.mod hosting-service/go.sum ./hosting-service/
 COPY hosting-contracts/go.mod hosting-contracts/go.sum ./hosting-contracts/
-COPY hosting-events-contract/go.mod hosting-events-contract/go.sum ./hosting-events-contract/
 COPY hosting-kit/go.mod hosting-kit/go.sum ./hosting-kit/
 
 WORKDIR /build/hosting-service
@@ -11,7 +10,6 @@ RUN go mod download
 
 WORKDIR /build
 COPY hosting-contracts/ ./hosting-contracts/
-COPY hosting-events-contract/ ./hosting-events-contract/
 COPY hosting-kit/ ./hosting-kit/
 COPY hosting-service/ ./hosting-service/
 

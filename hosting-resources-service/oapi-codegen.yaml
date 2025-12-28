@@ -1,0 +1,8 @@
+package: gen
+
+output: cmd/server/rest/gen/api.gen.go
+
+generate:
+  - types
+  - chi-server
+  - strict-server

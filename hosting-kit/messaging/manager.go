@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -25,7 +24,7 @@ type MessageManager struct {
 func NewMessageManager(url string, exchanges []ExchangeConfig, handlerTimeout time.Duration) (*MessageManager, error) {
 	conn, err := rabbitmq.NewConn(url, rabbitmq.WithConnectionOptionsLogging)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to RabbitMQ: %w", err)
+		return nil, err
 	}
 
 	for _, ex := range exchanges {
@@ -38,17 +37,18 @@ func NewMessageManager(url string, exchanges []ExchangeConfig, handlerTimeout ti
 		)
 		if err != nil {
 			conn.Close()
-			return nil, fmt.Errorf("failed to declare exchange %s: %w", ex.Name, err)
+			return nil, err
 		}
 		declarer.Close()
 	}
 
 	publisher, err := rabbitmq.NewPublisher(
 		conn,
+		rabbitmq.WithPublisherOptionsConfirm,
 	)
 	if err != nil {
 		conn.Close()
-		return nil, fmt.Errorf("failed to create publisher: %w", err)
+		return nil, err
 	}
 
 	return &MessageManager{
@@ -81,7 +81,7 @@ func (m *MessageManager) Subscribe(queueName, routingKey, exchangeName string, h
 		opts...,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create consumer: %w", err)
+		return err
 	}
 
 	m.consumers = append(m.consumers, consumer)
@@ -117,7 +117,7 @@ func (m *MessageManager) Subscribe(queueName, routingKey, exchangeName string, h
 func (m *MessageManager) Publish(exchangeName, routingKey string, data interface{}) error {
 	eventBytes, err := json.Marshal(data)
 	if err != nil {
-		return fmt.Errorf("could not marshal event %+v: %w", data, err)
+		return err
 	}
 
 	return m.publisher.Publish(
@@ -125,6 +125,7 @@ func (m *MessageManager) Publish(exchangeName, routingKey string, data interface
 		[]string{routingKey},
 		rabbitmq.WithPublishOptionsContentType("application/json"),
 		rabbitmq.WithPublishOptionsExchange(exchangeName),
+		rabbitmq.WithPublishOptionsPersistentDelivery,
 	)
 }
 

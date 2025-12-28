@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"hosting-events-contract/topology"
+	"hosting-contracts/topology"
 	"hosting-kit/debug"
 	"hosting-kit/messaging"
 	"hosting-provisioning-service/cmd/server/queue"
@@ -42,7 +42,7 @@ func run(ctx context.Context) error {
 			ShutdownTimeout  time.Duration `conf:"default:20s"`
 		}
 		Web struct {
-			DebugHost string `conf:"default:0.0.0.0:7010,env:HTTP_PORT"`
+			DebugHost string `conf:"default:0.0.0.0:7010"`
 		}
 	}{}
 

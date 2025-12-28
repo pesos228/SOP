@@ -3,10 +3,11 @@ package main
 import (
 	"errors"
 	"fmt"
+	"hosting-kit/database"
 	"hosting-service/cmd/migrator/commands"
-	"hosting-service/internal/platform/database"
 	"log"
 	"os"
+	"time"
 
 	"github.com/ardanlabs/conf/v3"
 )
@@ -26,6 +27,9 @@ func run() error {
 			Password string `conf:"default:vladick,mask"`
 			Host     string `conf:"default:localhost:5432"`
 			Name     string `conf:"default:sop"`
+		}
+		Migration struct {
+			Timeout time.Duration `conf:"default:10s"`
 		}
 	}{}
 
@@ -47,22 +51,22 @@ func run() error {
 		Name:     cfg.DB.Name,
 	}
 
-	return processCommands(cfg.Args, dbConfig)
+	return processCommands(cfg.Args, cfg.Migration.Timeout, dbConfig)
 }
 
-func processCommands(args conf.Args, dbConfig database.Config) error {
+func processCommands(args conf.Args, timeOut time.Duration, dbConfig database.Config) error {
 	switch args.Num(0) {
 	case "migrate", "up":
-		return commands.Migrate(dbConfig)
+		return commands.Migrate(dbConfig, timeOut)
 
 	case "rollback", "down":
-		return commands.Rollback(dbConfig)
+		return commands.Rollback(dbConfig, timeOut)
 
 	case "status":
-		return commands.Status(dbConfig)
+		return commands.Status(dbConfig, timeOut)
 
 	case "reset":
-		return commands.Reset(dbConfig)
+		return commands.Reset(dbConfig, timeOut)
 
 	default:
 		fmt.Println("migrate/up:    create the schema in the database")

@@ -6,11 +6,8 @@ require (
 	github.com/99designs/gqlgen v0.17.81
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/google/uuid v1.6.0
-	github.com/jackc/pgx/v5 v5.7.5
-	github.com/pressly/goose/v3 v3.26.0
+	github.com/jackc/pgx/v5 v5.7.6
 	github.com/vektah/gqlparser/v2 v2.5.30
-	hosting-contracts v0.0.0
-	hosting-events-contract v0.0.0-00010101000000-000000000000
 	hosting-kit v0.0.0
 )
 
@@ -33,6 +30,7 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
+	github.com/pressly/goose/v3 v3.26.0 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
@@ -56,14 +54,13 @@ require (
 require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/ardanlabs/conf/v3 v3.9.0
-	github.com/oapi-codegen/runtime v1.1.2 // indirect
+	github.com/oapi-codegen/runtime v1.1.2
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/swaggo/http-swagger v1.3.4
 	golang.org/x/text v0.29.0 // indirect
+	hosting-contracts v0.0.0-00010101000000-000000000000
 )
 
 replace hosting-contracts => ../hosting-contracts
-
-replace hosting-events-contract => ../hosting-events-contract
 
 replace hosting-kit => ../hosting-kit

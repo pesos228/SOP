@@ -3,8 +3,8 @@ package plandb
 import (
 	"context"
 	"fmt"
+	"hosting-kit/page"
 	"hosting-service/internal/plan"
-	"hosting-service/internal/platform/page"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

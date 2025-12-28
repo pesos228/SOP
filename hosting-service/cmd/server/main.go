@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"hosting-events-contract/topology"
+	"hosting-contracts/topology"
+	"hosting-kit/database"
 	"hosting-kit/debug"
 	"hosting-kit/messaging"
 	"hosting-service/cmd/server/graphql"
@@ -12,7 +13,6 @@ import (
 	"hosting-service/cmd/server/rest"
 	"hosting-service/internal/plan"
 	"hosting-service/internal/plan/stores/plandb"
-	"hosting-service/internal/platform/database"
 	"hosting-service/internal/platform/mid"
 	"hosting-service/internal/server"
 	"hosting-service/internal/server/stores/serverdb"
@@ -51,8 +51,9 @@ func run(ctx context.Context) error {
 			MaxOpenConns int    `conf:"default:25"`
 		}
 		Web struct {
-			APIHost      string        `conf:"default:0.0.0.0:8080,env:HTTP_PORT"`
-			DebugHost    string        `conf:"default:0.0.0.0:8010,env:HTTP_PORT"`
+			APIHost      string        `conf:"default:0.0.0.0:8080"`
+			DebugHost    string        `conf:"default:0.0.0.0:8010"`
+			APIPrefix    string        `conf:"default:/api/hosting"`
 			ReadTimeout  time.Duration `conf:"default:5s"`
 			WriteTimeout time.Duration `conf:"default:10s"`
 			IdleTimeout  time.Duration `conf:"default:120s"`
@@ -144,6 +145,7 @@ func run(ctx context.Context) error {
 	rest.RegisterRoutes(mux, rest.Config{
 		PlanBus:   planBus,
 		ServerBus: serverBus,
+		Prefix:    cfg.Web.APIPrefix,
 	})
 
 	graphql.RegisterRoutes(mux, graphql.HandlerConfig{

@@ -1,8 +1,0 @@
-package: api
-
-output: api.gen.go
-
-generate:
-  - types
-  - chi-server
-  - strict-server

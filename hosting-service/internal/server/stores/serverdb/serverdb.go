@@ -3,7 +3,7 @@ package serverdb
 import (
 	"context"
 	"fmt"
-	"hosting-service/internal/platform/page"
+	"hosting-kit/page"
 	"hosting-service/internal/server"
 
 	"github.com/google/uuid"

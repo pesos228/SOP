@@ -1,0 +1,131 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"hosting-kit/database"
+	"hosting-kit/debug"
+	"hosting-resources-service/cmd/server/rest"
+	"hosting-resources-service/internal/pool"
+	"hosting-resources-service/internal/pool/stores/pooldb"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/ardanlabs/conf/v3"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+)
+
+func main() {
+	ctx := context.Background()
+
+	if err := run(ctx); err != nil {
+		log.Printf("error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func run(ctx context.Context) error {
+	cfg := struct {
+		App struct {
+			ShutdownTimeout time.Duration `conf:"default:20s"`
+		}
+		DB struct {
+			User         string `conf:"default:postgres"`
+			Password     string `conf:"default:vladick,mask"`
+			Host         string `conf:"default:localhost:5432"`
+			Name         string `conf:"default:sop_pool"`
+			MaxOpenConns int    `conf:"default:25"`
+		}
+		Web struct {
+			APIHost      string        `conf:"default:0.0.0.0:2080"`
+			DebugHost    string        `conf:"default:0.0.0.0:2010"`
+			APIPrefix    string        `conf:"default:/api/resources"`
+			ReadTimeout  time.Duration `conf:"default:5s"`
+			WriteTimeout time.Duration `conf:"default:10s"`
+			IdleTimeout  time.Duration `conf:"default:120s"`
+		}
+	}{}
+
+	const prefix = "RES"
+
+	help, err := conf.Parse(prefix, &cfg)
+	if err != nil {
+		if errors.Is(err, conf.ErrHelpWanted) {
+			fmt.Println(help)
+			os.Exit(0)
+		}
+		return fmt.Errorf("parsing config: %w", err)
+	}
+
+	db, err := database.Open(ctx, database.Config{
+		User:         cfg.DB.User,
+		Password:     cfg.DB.Password,
+		Host:         cfg.DB.Host,
+		Name:         cfg.DB.Name,
+		MaxOpenConns: cfg.DB.MaxOpenConns,
+	})
+	if err != nil {
+		return fmt.Errorf("connecting to db: %w", err)
+	}
+
+	defer db.Close()
+
+	poolStore := pooldb.NewStore(db)
+	poolBus := pool.NewBusiness(poolStore)
+
+	go func() {
+		if err := http.ListenAndServe(cfg.Web.DebugHost, debug.Mux()); err != nil {
+			log.Println("Debug server error")
+		}
+	}()
+
+	mux := chi.NewRouter()
+
+	mux.Use(middleware.Recoverer)
+	mux.Use(middleware.Logger)
+
+	rest.RegisterRoutes(mux, rest.Config{
+		PoolBus: poolBus,
+		Prefix:  cfg.Web.APIPrefix,
+	})
+
+	api := http.Server{
+		Addr:         cfg.Web.APIHost,
+		Handler:      mux,
+		ReadTimeout:  cfg.Web.ReadTimeout,
+		WriteTimeout: cfg.Web.WriteTimeout,
+		IdleTimeout:  cfg.Web.IdleTimeout,
+	}
+
+	serverErrors := make(chan error, 1)
+
+	go func() {
+		log.Printf("main: HTTP API listening on %s", api.Addr)
+		serverErrors <- api.ListenAndServe()
+	}()
+
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case err := <-serverErrors:
+		return fmt.Errorf("server error: %w", err)
+	case sig := <-shutdown:
+		log.Printf("main: %v : Start shutdown", sig)
+		ctxShut, cancel := context.WithTimeout(context.Background(), cfg.App.ShutdownTimeout)
+		defer cancel()
+
+		if err := api.Shutdown(ctxShut); err != nil {
+			api.Close()
+			return fmt.Errorf("could not stop http server gracefully: %w", err)
+		}
+	}
+
+	return nil
+}

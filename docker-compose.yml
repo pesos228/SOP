@@ -11,6 +11,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
@@ -41,15 +42,30 @@ services:
     networks:
       - hosting-network
 
-  migrator:
+  hosting-service-migrator:
     image: sop-hosting-service:latest
-    container_name: hosting-migrator
+    container_name: hosting-service-migrator
     command: ["/migrator", "migrate"]
     environment:
       - SERV_DB_USER=${POSTGRES_USER}
       - SERV_DB_PASSWORD=${POSTGRES_PASSWORD}
       - SERV_DB_HOST=${POSTGRES_HOST}:${POSTGRES_PORT}
-      - SERV_DB_NAME=${POSTGRES_DB}
+      - SERV_DB_NAME=${SERV_DB_NAME}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - hosting-network
+
+  resources-service-migrator:
+    image: sop-hosting-resources-service:latest
+    container_name: hosting-resources-migrator
+    command: ["/migrator", "migrate-seed"]
+    environment:
+      - RES_DB_USER=${POSTGRES_USER}
+      - RES_DB_PASSWORD=${POSTGRES_PASSWORD}
+      - RES_DB_HOST=${POSTGRES_HOST}:${POSTGRES_PORT}
+      - RES_DB_NAME=${RES_DB_NAME}
     depends_on:
       postgres:
         condition: service_healthy
@@ -62,12 +78,12 @@ services:
       dockerfile: hosting-service/Dockerfile
     image: sop-hosting-service:latest
     restart: unless-stopped
-    container_name: hosting-api
+    container_name: hosting-service
     environment:
       - SERV_DB_USER=${POSTGRES_USER}
       - SERV_DB_PASSWORD=${POSTGRES_PASSWORD}
       - SERV_DB_HOST=${POSTGRES_HOST}:${POSTGRES_PORT}
-      - SERV_DB_NAME=${POSTGRES_DB}
+      - SERV_DB_NAME=${SERV_DB_NAME}
       - SERV_AMQP_URL=amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/
       - SERV_AMQP_QUEUENAME=${SERV_AMQP_QUEUENAME}
     healthcheck:
@@ -91,7 +107,7 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
-      migrator:
+      hosting-service-migrator:
         condition: service_completed_successfully
     networks:
       - hosting-network
@@ -100,9 +116,9 @@ services:
     build:
       context: .
       dockerfile: hosting-provisioning-service/Dockerfile
-    image: sop-provisioning-service:latest
+    image: sop-hosting-provisioning-service:latest
     restart: unless-stopped
-    container_name: hosting-provisioner
+    container_name: hosting-provisioner-service
     environment:
       - PROV_AMQP_URL=amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${RABBITMQ_HOST}:${RABBITMQ_PORT}/
       - PROV_AMQP_QUEUENAME=${PROV_AMQP_QUEUENAME}
@@ -127,6 +143,44 @@ services:
     networks:
       - hosting-network
 
+  resources-service:
+    build:
+      context: .
+      dockerfile: hosting-resources-service/Dockerfile
+    image: sop-hosting-resources-service:latest
+    restart: unless-stopped
+    container_name: hosting-resources-service
+    environment:
+      - RES_DB_USER=${POSTGRES_USER}
+      - RES_DB_PASSWORD=${POSTGRES_PASSWORD}
+      - RES_DB_HOST=${POSTGRES_HOST}:${POSTGRES_PORT}
+      - RES_DB_NAME=${RES_DB_NAME}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:2010/health",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    ports:
+      - "2080:2080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      resources-service-migrator:
+        condition: service_completed_successfully
+      hosting-service:
+        condition: service_healthy
+    networks:
+      - hosting-network
+
   prometheus:
     image: prom/prometheus:latest
     container_name: hosting-prometheus
@@ -143,6 +197,8 @@ services:
       hosting-service:
         condition: service_healthy
       provisioning-service:
+        condition: service_healthy
+      resources-service:
         condition: service_healthy
     networks:
       - hosting-network

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hosting-events-contract/events"
+	"hosting-contracts/provisioning-service/queue/events"
 	"hosting-kit/messaging"
 	"hosting-service/internal/server"
 )

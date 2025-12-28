@@ -3,8 +3,8 @@ package servermsg
 import (
 	"context"
 	"fmt"
-	"hosting-events-contract/events"
-	"hosting-events-contract/topology"
+	"hosting-contracts/hosting-service/queue/commands"
+	"hosting-contracts/topology"
 	"hosting-kit/messaging"
 	"hosting-service/internal/server"
 )
@@ -21,13 +21,13 @@ func NewPublisher(publisher *messaging.MessageManager) *Publisher {
 
 func (p *Publisher) RequestIP(ctx context.Context, server server.Server) error {
 
-	command := events.ProvisionServerCommand{
+	command := commands.ProvisionServerCommand{
 		ServerID: server.ID,
 		Hostname: server.Name,
 	}
 
-	if err := p.publisher.Publish(topology.CommandsExchange, events.ProvisionRequestKey, command); err != nil {
-		return fmt.Errorf("msg: failed to queue server for provisioning")
+	if err := p.publisher.Publish(topology.CommandsExchange, commands.ProvisionRequestKey, command); err != nil {
+		return fmt.Errorf("msg: failed to queue server for provisioning: %w", err)
 	}
 
 	return nil

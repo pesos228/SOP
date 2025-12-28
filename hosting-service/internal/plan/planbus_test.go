@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 
+	"hosting-kit/page"
 	"hosting-service/internal/plan"
-	"hosting-service/internal/platform/page"
 )
 
 type mockStorer struct {

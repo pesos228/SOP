@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"hosting-events-contract/events"
+	"hosting-contracts/hosting-service/queue/commands"
 	"hosting-kit/messaging"
 	"hosting-provisioning-service/internal/provisioning"
+
 	"log"
 )
 
@@ -21,11 +22,11 @@ func new(provBus *provisioning.Business) *handlers {
 }
 
 func (h *handlers) handleProvisionServer(ctx context.Context, body []byte, routingKey string) error {
-	if routingKey != events.ProvisionRequestKey {
+	if routingKey != commands.ProvisionRequestKey {
 		return fmt.Errorf("%w: unknown routing key: %s", messaging.ErrPermanentFailure, routingKey)
 	}
 
-	var cmd events.ProvisionServerCommand
+	var cmd commands.ProvisionServerCommand
 	if err := json.Unmarshal(body, &cmd); err != nil {
 		log.Printf("ERROR: failed to unmarshal command: %v. Message will be dropped.", err)
 		return fmt.Errorf("%w: failed to unmarshal ServerProvisionedEvent: %v", messaging.ErrPermanentFailure, err)

@@ -2,8 +2,8 @@ package provisegrp
 
 import (
 	"fmt"
-	"hosting-events-contract/events"
-	"hosting-events-contract/topology"
+	"hosting-contracts/hosting-service/queue/commands"
+	"hosting-contracts/topology"
 	"hosting-kit/messaging"
 	"hosting-provisioning-service/internal/provisioning"
 )
@@ -18,7 +18,7 @@ func Register(manager *messaging.MessageManager, cfg Config) error {
 
 	err := manager.Subscribe(
 		cfg.QueueName,
-		events.ProvisionRequestKey,
+		commands.ProvisionRequestKey,
 		topology.CommandsExchange,
 		handlers.handleProvisionServer,
 		&messaging.DLQConfig{

@@ -454,7 +454,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 }
 
 var sources = []*ast.Source{
-	{Name: "../../../../hosting-contracts/graphql/schema.graphqls", Input: `enum ServerStatus {
+	{Name: "../../../../hosting-contracts/graphql/hosting/schema.graphqls", Input: `enum ServerStatus {
   PENDING
   RUNNING
   STOPPED

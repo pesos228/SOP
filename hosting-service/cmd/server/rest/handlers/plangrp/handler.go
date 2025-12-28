@@ -3,22 +3,24 @@ package plangrp
 import (
 	"context"
 	"errors"
-	"hosting-contracts/api"
+	"hosting-kit/page"
+	"hosting-service/cmd/server/rest/gen"
 	"hosting-service/internal/plan"
-	"hosting-service/internal/platform/page"
 )
 
 type Handlers struct {
 	planBus *plan.Business
+	prefix  string
 }
 
-func New(planBus *plan.Business) *Handlers {
+func New(planBus *plan.Business, prefix string) *Handlers {
 	return &Handlers{
 		planBus: planBus,
+		prefix:  prefix,
 	}
 }
 
-func (h *Handlers) ListPlans(ctx context.Context, request api.ListPlansRequestObject) (api.ListPlansResponseObject, error) {
+func (h *Handlers) ListPlans(ctx context.Context, request gen.ListPlansRequestObject) (gen.ListPlansResponseObject, error) {
 	pageNum := 1
 	pageSize := 10
 
@@ -37,10 +39,10 @@ func (h *Handlers) ListPlans(ctx context.Context, request api.ListPlansRequestOb
 		return nil, err
 	}
 
-	return api.ListPlans200ApplicationHalPlusJSONResponse(toPlanCollectionResponse(pages, page, count)), nil
+	return gen.ListPlans200ApplicationHalPlusJSONResponse(toPlanCollectionResponse(pages, page, count, h.prefix)), nil
 }
 
-func (h *Handlers) CreatePlan(ctx context.Context, request api.CreatePlanRequestObject) (api.CreatePlanResponseObject, error) {
+func (h *Handlers) CreatePlan(ctx context.Context, request gen.CreatePlanRequestObject) (gen.CreatePlanResponseObject, error) {
 	newPlan, err := h.planBus.Create(ctx, plan.CreatePlanParams{
 		Name:     request.Body.Name,
 		CPUCores: request.Body.CpuCores,
@@ -50,26 +52,26 @@ func (h *Handlers) CreatePlan(ctx context.Context, request api.CreatePlanRequest
 
 	if err != nil {
 		if errors.Is(err, plan.ErrValidation) {
-			return api.CreatePlan400JSONResponse{
-				BadRequestJSONResponse: api.BadRequestJSONResponse{Message: err.Error()},
+			return gen.CreatePlan400JSONResponse{
+				BadRequestJSONResponse: gen.BadRequestJSONResponse{Message: err.Error()},
 			}, nil
 		}
 		return nil, err
 	}
 
-	return api.CreatePlan201JSONResponse(toPlan(newPlan)), nil
+	return gen.CreatePlan201JSONResponse(toPlan(newPlan, h.prefix)), nil
 }
 
-func (h *Handlers) GetPlanById(ctx context.Context, request api.GetPlanByIdRequestObject) (api.GetPlanByIdResponseObject, error) {
+func (h *Handlers) GetPlanById(ctx context.Context, request gen.GetPlanByIdRequestObject) (gen.GetPlanByIdResponseObject, error) {
 	newPlan, err := h.planBus.FindByID(ctx, request.PlanId)
 	if err != nil {
 		if errors.Is(err, plan.ErrPlanNotFound) {
-			return api.GetPlanById404JSONResponse{
-				Message: err.Error(),
+			return gen.GetPlanById404JSONResponse{
+				Message: plan.ErrPlanNotFound.Error(),
 			}, nil
 		}
 		return nil, err
 	}
 
-	return api.GetPlanById200ApplicationHalPlusJSONResponse(toPlan(newPlan)), nil
+	return gen.GetPlanById200ApplicationHalPlusJSONResponse(toPlan(newPlan, h.prefix)), nil
 }

@@ -44,7 +44,7 @@ func (ps *Business) GenerateIP(ctx context.Context, serverID uuid.UUID) error {
 
 	if rand.Intn(10) < 2 {
 		if err := ps.notifier.NotifyFailure(ctx, serverID, "IP generation failed", time.Now().UTC()); err != nil {
-			return fmt.Errorf("failed to notify failure: %w", err)
+			return fmt.Errorf("generateip: %w", err)
 		}
 		return nil
 	}
@@ -54,7 +54,7 @@ func (ps *Business) GenerateIP(ctx context.Context, serverID uuid.UUID) error {
 		IP:            ip,
 		ProvisionedAt: time.Now().UTC(),
 	}); err != nil {
-		return fmt.Errorf("failed to notify success: %w", err)
+		return fmt.Errorf("generateip: %w", err)
 	}
 	return nil
 }

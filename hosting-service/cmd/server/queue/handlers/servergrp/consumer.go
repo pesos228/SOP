@@ -2,8 +2,8 @@ package servergrp
 
 import (
 	"fmt"
-	"hosting-events-contract/events"
-	"hosting-events-contract/topology"
+	"hosting-contracts/provisioning-service/queue/events"
+	"hosting-contracts/topology"
 	"hosting-kit/messaging"
 	"hosting-service/internal/server"
 )

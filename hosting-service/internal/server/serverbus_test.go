@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"testing"
 
+	"hosting-kit/page"
 	"hosting-service/internal/plan"
-	"hosting-service/internal/platform/page"
 	"hosting-service/internal/server"
 
 	"github.com/google/uuid"

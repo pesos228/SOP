@@ -2,52 +2,52 @@ package servergrp
 
 import (
 	"fmt"
-	"hosting-contracts/api"
+	"hosting-kit/page"
+	"hosting-service/cmd/server/rest/gen"
 	"hosting-service/cmd/server/rest/pagination"
-	"hosting-service/internal/platform/page"
 	"hosting-service/internal/server"
 )
 
-func toServer(s server.Server) api.Server {
-	links := make(api.Links)
+func toServer(s server.Server, prefix string) gen.Server {
+	links := make(gen.Links)
 
-	selfLink := fmt.Sprintf("/api/servers/%s", s.ID)
-	actionsLink := fmt.Sprintf("/api/servers/%s/actions", s.ID)
+	selfLink := fmt.Sprintf("%s/servers/%s", prefix, s.ID)
+	actionsLink := fmt.Sprintf("%s/servers/%s/actions", prefix, s.ID)
 
-	links["self"] = api.Link{Href: selfLink}
+	links["self"] = gen.Link{Href: selfLink}
 
 	switch s.Status {
 	case server.StatusRunning:
-		links["stop"] = api.Link{Href: actionsLink}
+		links["stop"] = gen.Link{Href: actionsLink}
 	case server.StatusStopped:
-		links["start"] = api.Link{Href: actionsLink}
-		links["delete"] = api.Link{Href: actionsLink}
+		links["start"] = gen.Link{Href: actionsLink}
+		links["delete"] = gen.Link{Href: actionsLink}
 	}
 
-	return api.Server{
+	return gen.Server{
 		Id:              s.ID,
 		Name:            s.Name,
 		PlanId:          s.PlanID,
 		IPv4Address:     s.IPv4Address,
-		Status:          api.ServerStatus(s.Status),
+		Status:          gen.ServerStatus(s.Status),
 		CreatedAt:       s.CreatedAt,
 		UnderscoreLinks: links,
 	}
 }
 
-func toServerCollectionResponse(servers []server.Server, pg page.Page, total int) api.ServerCollectionResponse {
-	items := make([]api.Server, len(servers))
+func toServerCollectionResponse(servers []server.Server, pg page.Page, total int, prefix string) gen.ServerCollectionResponse {
+	items := make([]gen.Server, len(servers))
 	for i, s := range servers {
-		items[i] = toServer(s)
+		items[i] = toServer(s, prefix)
 	}
 
-	return api.ServerCollectionResponse{
-		UnderscoreEmbedded: &struct {
-			Servers *[]api.Server `json:"servers,omitempty"`
+	return gen.ServerCollectionResponse{
+		UnderscoreEmbedded: struct {
+			Servers []gen.Server `json:"servers"`
 		}{
-			Servers: &items,
+			Servers: items,
 		},
 		Page:            pagination.ToMetaData(pg, total),
-		UnderscoreLinks: pagination.ToLinks("/api/servers", pg, total),
+		UnderscoreLinks: pagination.ToLinks(fmt.Sprintf("%s/servers", prefix), pg, total),
 	}
 }

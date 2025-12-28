@@ -1,12 +1,14 @@
 package rest
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	httpSwagger "github.com/swaggo/http-swagger"
 
-	"hosting-contracts/api"
+	"hosting-contracts/hosting-service/openapi"
+	"hosting-service/cmd/server/rest/gen"
 	"hosting-service/internal/plan"
 	"hosting-service/internal/server"
 )
@@ -14,21 +16,24 @@ import (
 type Config struct {
 	PlanBus   *plan.Business
 	ServerBus *server.Business
+	Prefix    string
 }
 
 func RegisterRoutes(router *chi.Mux, cfg Config) {
-	apiImpl := New(cfg.PlanBus, cfg.ServerBus)
-	strictHandler := api.NewStrictHandler(apiImpl, nil)
+	apiImpl := New(cfg.PlanBus, cfg.ServerBus, cfg.Prefix)
+	strictHandler := gen.NewStrictHandler(apiImpl, nil)
 
-	router.Route("/api", func(r chi.Router) {
+	router.Route(cfg.Prefix, func(r chi.Router) {
+		specURL := fmt.Sprintf("%s/swagger/doc.yaml", cfg.Prefix)
+
 		r.Get("/swagger/*", httpSwagger.Handler(
-			httpSwagger.URL("/api/swagger/doc.yaml"),
+			httpSwagger.URL(specURL),
 		))
 		r.Get("/swagger/doc.yaml", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/x-yaml")
-			w.Write(api.OpenApiSpec)
+			w.Write(openapi.OpenApiSpec)
 		})
 
-		api.HandlerFromMux(strictHandler, r)
+		gen.HandlerFromMux(strictHandler, r)
 	})
 }

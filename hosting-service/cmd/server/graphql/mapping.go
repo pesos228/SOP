@@ -1,8 +1,8 @@
 package graphql
 
 import (
+	"hosting-kit/page"
 	"hosting-service/internal/plan"
-	"hosting-service/internal/platform/page"
 	"hosting-service/internal/server"
 )
 

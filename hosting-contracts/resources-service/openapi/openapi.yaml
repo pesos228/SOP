@@ -1,0 +1,254 @@
+openapi: 3.0.3
+info:
+  title: "Resource Pool API"
+  description: "REST API для управления пулами ресурсов (стиль Server Hosting API)."
+  version: "1.0.0"
+
+servers:
+  - url: /api/resources
+    description: Основной префикс для всех эндпоинтов API
+
+tags:
+  - name: "Pools"
+    description: "Управление пулами ресурсов"
+  - name: "System"
+    description: "Системная информация и точка входа"
+
+paths:
+  # --- Root Endpoint ---
+  /:
+    get:
+      tags: ["System"]
+      summary: "Точка входа (Root)"
+      description: "Возвращает информацию о сервисе и ссылки на ресурсы."
+      operationId: getRoot
+      responses:
+        "200":
+          description: "Корневой ресурс"
+          content:
+            application/hal+json:
+              schema:
+                $ref: "#/components/schemas/RootResource"
+
+  # --- Pools ---
+  /pools:
+    get:
+      tags: ["Pools"]
+      summary: "Получить список пулов"
+      operationId: listPools
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: "Пагинированный список пулов в формате HAL"
+          content:
+            application/hal+json:
+              schema:
+                $ref: "#/components/schemas/PoolCollectionResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    post:
+      tags: ["Pools"]
+      summary: "Создание нового пула"
+      operationId: createPool
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePoolRequest"
+      responses:
+        "201":
+          description: "Новый пул создан"
+          content:
+            application/hal+json:
+              schema:
+                $ref: "#/components/schemas/Pool"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  # --- Resources Operations ---
+  /pools/{poolId}/resources:
+    post:
+      tags: ["Pools"]
+      summary: "Добавить ресурсы в пул"
+      operationId: addResources
+      parameters:
+        - name: poolId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Resource"
+      responses:
+        "200":
+          description: "Ресурсы добавлены, возвращен обновленный пул"
+          content:
+            application/hal+json:
+              schema:
+                $ref: "#/components/schemas/Pool"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  responses:
+    BadRequest:
+      description: "Некорректный запрос"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/StatusResponse"
+    NotFound:
+      description: "Ресурс не найден"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/StatusResponse"
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: "Номер запрашиваемой страницы"
+      required: false
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+    PageSize:
+      name: pageSize
+      in: query
+      description: "Количество элементов на странице."
+      required: false
+      schema:
+        type: integer
+        default: 10
+        minimum: 1
+
+  schemas:
+    # --- HAL Structures ---
+    Link:
+      type: object
+      required: ["href"]
+      properties:
+        href:
+          type: string
+          format: uri
+        templated:
+          type: boolean
+          description: "Указывает, является ли 'href' URI-шаблоном (RFC 6570)."
+          default: false
+    Links:
+      type: object
+      additionalProperties:
+        $ref: "#/components/schemas/Link"
+      description: "Контейнер для гипермедиа-ссылок."
+    
+    # Root Resource (Минималистичный, как в Hosting API)
+    RootResource:
+      type: object
+      required: ["_links"]
+      properties:
+        _links:
+          $ref: "#/components/schemas/Links"
+
+    # --- Page Structure ---
+    PageMetadata:
+      type: object
+      description: "Информация о пагинации"
+      required:
+        [
+          "number",
+          "size",
+          "totalElements",
+          "totalPages",
+          "hasNextPage",
+          "hasPreviousPage",
+        ]
+      properties:
+        number:
+          type: integer
+          description: "Текущий номер страницы"
+        size:
+          type: integer
+          description: "Размер страницы"
+        totalElements:
+          type: integer
+          description: "Общее количество элементов"
+        totalPages:
+          type: integer
+          description: "Общее количество страниц"
+        hasNextPage:
+          type: boolean
+          description: "Есть ли следующая страница"
+        hasPreviousPage:
+          type: boolean
+          description: "Есть ли предыдущая страница"
+
+    # --- Domain Structures ---
+
+    # Объект ресурсов (вложенный в Pool)
+    Resource:
+      type: object
+      required: ["cpuCores", "ramMb", "diskGb", "ipCount"]
+      properties:
+        cpuCores: { type: integer }
+        ramMb: { type: integer }
+        diskGb: { type: integer }
+        ipCount: { type: integer }
+
+    # Основная сущность Pool
+    Pool:
+      type: object
+      required: ["id", "name", "resources", "_links"]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        resources:
+          $ref: "#/components/schemas/Resource"
+        _links:
+          $ref: "#/components/schemas/Links"
+
+    # Запрос на создание
+    CreatePoolRequest:
+      type: object
+      required: ["name", "cpuCores", "ramMb", "diskGb", "ipCount"]
+      properties:
+        name: { type: string }
+        cpuCores: { type: integer }
+        ramMb: { type: integer }
+        diskGb: { type: integer }
+        ipCount: { type: integer }
+
+    # Коллекция
+    PoolCollectionResponse:
+      type: object
+      required: ["page", "_links", "_embedded"]
+      properties:
+        _embedded:
+          type: object
+          required: ["pools"]
+          properties:
+            pools:
+              type: array
+              items: { $ref: "#/components/schemas/Pool" }
+        _links:
+          $ref: "#/components/schemas/Links"
+        page:
+          $ref: "#/components/schemas/PageMetadata"
+
+    # Унифицированный ответ ошибки
+    StatusResponse:
+      type: object
+      required: ["message"]
+      properties:
+        message: { type: string }

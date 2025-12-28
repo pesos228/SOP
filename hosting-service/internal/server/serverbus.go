@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hosting-kit/page"
 	"hosting-service/internal/plan"
-	"hosting-service/internal/platform/page"
 	"net"
 	"strings"
 	"time"
@@ -69,7 +69,7 @@ func NewServer(planID uuid.UUID, name string) (Server, error) {
 func (s *Business) FindByID(ctx context.Context, ID uuid.UUID) (Server, error) {
 	server, err := s.storer.FindByID(ctx, ID)
 	if err != nil {
-		return Server{}, err
+		return Server{}, fmt.Errorf("findbyid: %w", err)
 	}
 
 	return server, nil
@@ -78,7 +78,7 @@ func (s *Business) FindByID(ctx context.Context, ID uuid.UUID) (Server, error) {
 func (s *Business) Create(ctx context.Context, name string, planID uuid.UUID) (Server, error) {
 	_, err := s.planBus.FindByID(ctx, planID)
 	if err != nil {
-		return Server{}, err
+		return Server{}, fmt.Errorf("plan.findbyid: %w", err)
 	}
 
 	server, err := NewServer(planID, name)
@@ -88,11 +88,11 @@ func (s *Business) Create(ctx context.Context, name string, planID uuid.UUID) (S
 
 	err = s.storer.Create(ctx, server)
 	if err != nil {
-		return Server{}, err
+		return Server{}, fmt.Errorf("create: %w", err)
 	}
 
 	if err := s.provisioner.RequestIP(ctx, server); err != nil {
-		return Server{}, err
+		return Server{}, fmt.Errorf("provisioner.requestip: %w", err)
 	}
 
 	return server, nil
@@ -101,7 +101,7 @@ func (s *Business) Create(ctx context.Context, name string, planID uuid.UUID) (S
 func (s *Business) Search(ctx context.Context, pg page.Page) ([]Server, int, error) {
 	servers, count, err := s.storer.FindAll(ctx, pg)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("search: %w", err)
 	}
 
 	return servers, count, nil
@@ -110,7 +110,7 @@ func (s *Business) Search(ctx context.Context, pg page.Page) ([]Server, int, err
 func (s *Business) Start(ctx context.Context, serverID uuid.UUID) (Server, error) {
 	server, err := s.storer.FindByID(ctx, serverID)
 	if err != nil {
-		return Server{}, err
+		return Server{}, fmt.Errorf("start: %w", err)
 	}
 
 	if server.Status != StatusStopped {
@@ -120,7 +120,7 @@ func (s *Business) Start(ctx context.Context, serverID uuid.UUID) (Server, error
 	server.Status = StatusRunning
 
 	if err := s.storer.Update(ctx, server); err != nil {
-		return Server{}, err
+		return Server{}, fmt.Errorf("start: %w", err)
 	}
 
 	return server, nil
@@ -129,7 +129,7 @@ func (s *Business) Start(ctx context.Context, serverID uuid.UUID) (Server, error
 func (s *Business) Stop(ctx context.Context, serverID uuid.UUID) (Server, error) {
 	server, err := s.storer.FindByID(ctx, serverID)
 	if err != nil {
-		return Server{}, err
+		return Server{}, fmt.Errorf("stop: %w", err)
 	}
 
 	if server.Status != StatusRunning {
@@ -139,7 +139,7 @@ func (s *Business) Stop(ctx context.Context, serverID uuid.UUID) (Server, error)
 	server.Status = StatusStopped
 
 	if err := s.storer.Update(ctx, server); err != nil {
-		return Server{}, err
+		return Server{}, fmt.Errorf("stop: %w", err)
 	}
 
 	return server, nil
@@ -148,15 +148,15 @@ func (s *Business) Stop(ctx context.Context, serverID uuid.UUID) (Server, error)
 func (s *Business) Delete(ctx context.Context, serverID uuid.UUID) (Server, error) {
 	server, err := s.storer.FindByID(ctx, serverID)
 	if err != nil {
-		return Server{}, err
+		return Server{}, fmt.Errorf("delete: %w", err)
 	}
 
-	if server.Status != StatusStopped && server.Status != StatusRunning {
+	if server.Status != StatusStopped && server.Status != StatusRunning && server.Status != StatusProvisionFailed {
 		return Server{}, fmt.Errorf("%w: cannot delete server with status '%s', expected RUNNING or STOPPED", ErrValidation, server.Status)
 	}
 
 	if err := s.storer.Delete(ctx, serverID); err != nil {
-		return Server{}, err
+		return Server{}, fmt.Errorf("delete: %w", err)
 	}
 
 	return server, nil
@@ -165,7 +165,7 @@ func (s *Business) Delete(ctx context.Context, serverID uuid.UUID) (Server, erro
 func (s *Business) SetIPAddress(ctx context.Context, serverID uuid.UUID, ip string) error {
 	server, err := s.storer.FindByID(ctx, serverID)
 	if err != nil {
-		return err
+		return fmt.Errorf("setipaddress: %w", err)
 	}
 
 	if net.ParseIP(ip) == nil {
@@ -184,7 +184,7 @@ func (s *Business) SetIPAddress(ctx context.Context, serverID uuid.UUID, ip stri
 	server.IPv4Address = &ip
 
 	if err := s.storer.Update(ctx, server); err != nil {
-		return err
+		return fmt.Errorf("setipaddress: %w", err)
 	}
 
 	return nil
@@ -193,7 +193,7 @@ func (s *Business) SetIPAddress(ctx context.Context, serverID uuid.UUID, ip stri
 func (s *Business) SetProvisioningFailed(ctx context.Context, serverID uuid.UUID) error {
 	server, err := s.storer.FindByID(ctx, serverID)
 	if err != nil {
-		return err
+		return fmt.Errorf("setprovisioningfailed: %w", err)
 	}
 
 	if server.Status == StatusProvisionFailed {
@@ -203,7 +203,7 @@ func (s *Business) SetProvisioningFailed(ctx context.Context, serverID uuid.UUID
 	server.Status = StatusProvisionFailed
 
 	if err := s.storer.Update(ctx, server); err != nil {
-		return err
+		return fmt.Errorf("setprovisioningfailed: %w", err)
 	}
 
 	return nil

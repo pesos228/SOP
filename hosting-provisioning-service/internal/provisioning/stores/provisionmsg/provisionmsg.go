@@ -3,10 +3,11 @@ package provisionmsg
 import (
 	"context"
 	"fmt"
-	"hosting-events-contract/events"
-	"hosting-events-contract/topology"
+	"hosting-contracts/provisioning-service/queue/events"
+	"hosting-contracts/topology"
 	"hosting-kit/messaging"
 	"hosting-provisioning-service/internal/provisioning"
+
 	"time"
 
 	"github.com/google/uuid"

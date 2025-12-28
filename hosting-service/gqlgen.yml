@@ -1,5 +1,5 @@
 schema:
-  - ../hosting-contracts/graphql/schema.graphqls
+  - ../hosting-contracts/hosting-service/graphql/schema.graphqls
 
 exec:
   filename: cmd/server/graphql/generated.go
