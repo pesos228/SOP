@@ -22,7 +22,7 @@ func NewStore(db *pgxpool.Pool) *Store {
 func (s *Store) FindByID(ctx context.Context, ID uuid.UUID) (server.Server, error) {
 	const q = `
 	SELECT 
-		id, plan_id, name, ipv4_address, status, created_at
+		id, plan_id, name, ipv4_address, pool_id, status, created_at
 	FROM 
 		servers 
 	WHERE 
@@ -51,9 +51,9 @@ func (s *Store) FindByID(ctx context.Context, ID uuid.UUID) (server.Server, erro
 func (s *Store) Create(ctx context.Context, srv server.Server) error {
 	const q = `
 	INSERT INTO servers 
-		(id, plan_id, name, ipv4_address, status, created_at)
+		(id, plan_id, name, ipv4_address, pool_id, status, created_at)
 	VALUES 
-		(@id, @plan_id, @name, @ipv4_address, @status, @created_at)`
+		(@id, @plan_id, @name, @ipv4_address, @pool_id, @status, @created_at)`
 
 	dbServer := toDBServer(srv)
 
@@ -62,6 +62,7 @@ func (s *Store) Create(ctx context.Context, srv server.Server) error {
 		"plan_id":      dbServer.PlanID,
 		"name":         dbServer.Name,
 		"ipv4_address": dbServer.IPv4Address,
+		"pool_id":      dbServer.PoolID,
 		"status":       dbServer.Status,
 		"created_at":   dbServer.CreatedAt,
 	}
@@ -85,7 +86,7 @@ func (s *Store) FindAll(ctx context.Context, pg page.Page) ([]server.Server, int
 
 	const q = `
 	SELECT 
-		id, plan_id, name, ipv4_address, status, created_at
+		id, plan_id, name, ipv4_address, pool_id, status, created_at
 	FROM 
 		servers
 	ORDER BY 
@@ -120,6 +121,7 @@ func (s *Store) Update(ctx context.Context, srv server.Server) error {
 		plan_id = @plan_id,
 		name = @name,
 		ipv4_address = @ipv4_address,
+		pool_id = @pool_id,
 		status = @status
 	WHERE 
 		id = @id`
@@ -129,6 +131,7 @@ func (s *Store) Update(ctx context.Context, srv server.Server) error {
 	args := pgx.NamedArgs{
 		"id":           dbServer.ID,
 		"plan_id":      dbServer.PlanID,
+		"pool_id":      dbServer.PoolID,
 		"name":         dbServer.Name,
 		"ipv4_address": dbServer.IPv4Address,
 		"status":       dbServer.Status,

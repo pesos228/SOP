@@ -46,6 +46,9 @@ func NewPlan(params CreatePlanParams) (Plan, error) {
 	if params.DiskGB <= 0 {
 		return Plan{}, fmt.Errorf("%w: disk in GB must be a positive number", ErrValidation)
 	}
+	if params.IpCount <= 0 {
+		return Plan{}, fmt.Errorf("%w: IP count must be a positive number", ErrValidation)
+	}
 
 	plan := Plan{
 		ID:       uuid.New(),
@@ -53,6 +56,7 @@ func NewPlan(params CreatePlanParams) (Plan, error) {
 		CPUCores: params.CPUCores,
 		RAMMB:    params.RAMMB,
 		DiskGB:   params.DiskGB,
+		IpCount:  params.IpCount,
 	}
 
 	return plan, nil

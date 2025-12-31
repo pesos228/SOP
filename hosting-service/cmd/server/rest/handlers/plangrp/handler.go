@@ -48,6 +48,7 @@ func (h *Handlers) CreatePlan(ctx context.Context, request gen.CreatePlanRequest
 		CPUCores: request.Body.CpuCores,
 		RAMMB:    request.Body.RamMb,
 		DiskGB:   request.Body.DiskGb,
+		IpCount:  request.Body.IpCount,
 	})
 
 	if err != nil {

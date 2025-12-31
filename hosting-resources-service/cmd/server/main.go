@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"hosting-kit/database"
 	"hosting-kit/debug"
+	"hosting-resources-service/cmd/server/grpc"
 	"hosting-resources-service/cmd/server/rest"
 	"hosting-resources-service/internal/pool"
 	"hosting-resources-service/internal/pool/stores/pooldb"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -45,6 +47,7 @@ func run(ctx context.Context) error {
 		Web struct {
 			APIHost      string        `conf:"default:0.0.0.0:2080"`
 			DebugHost    string        `conf:"default:0.0.0.0:2010"`
+			GRPCHost     string        `conf:"default:0.0.0.0:2001"`
 			APIPrefix    string        `conf:"default:/api/resources"`
 			ReadTimeout  time.Duration `conf:"default:5s"`
 			WriteTimeout time.Duration `conf:"default:10s"`
@@ -109,6 +112,22 @@ func run(ctx context.Context) error {
 		log.Printf("main: HTTP API listening on %s", api.Addr)
 		serverErrors <- api.ListenAndServe()
 	}()
+
+	lis, err := net.Listen("tcp", cfg.Web.GRPCHost)
+	if err != nil {
+		return fmt.Errorf("failed to listen on host %s : %w", cfg.Web.GRPCHost, err)
+	}
+
+	grpcApp := grpc.New(grpc.Config{
+		PoolBus: poolBus,
+	})
+
+	go func() {
+		log.Printf("main: gRPC API listening on %s", cfg.Web.GRPCHost)
+		serverErrors <- grpcApp.Serve(lis)
+	}()
+
+	defer grpcApp.Stop()
 
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)

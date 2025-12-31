@@ -16,7 +16,14 @@ import (
 var (
 	ErrServerNotFound = errors.New("server not found")
 	ErrValidation     = errors.New("validation error")
+	ErrInvalidPlan    = errors.New("invalid plan provided")
+	ErrNoResources    = errors.New("not enough resources available")
 )
+
+type ResourcesManager interface {
+	Consume(ctx context.Context, r Resources) (uuid.UUID, error)
+	Return(ctx context.Context, r Resources, poolID uuid.UUID) error
+}
 
 type PlanFinder interface {
 	FindByID(ctx context.Context, ID uuid.UUID) (plan.Plan, error)
@@ -38,17 +45,19 @@ type Business struct {
 	storer      Storer
 	planBus     PlanFinder
 	provisioner Provisioner
+	resources   ResourcesManager
 }
 
-func NewBusiness(storer Storer, planBus PlanFinder, provisioner Provisioner) *Business {
+func NewBusiness(storer Storer, planBus PlanFinder, provisioner Provisioner, resources ResourcesManager) *Business {
 	return &Business{
 		storer:      storer,
 		planBus:     planBus,
 		provisioner: provisioner,
+		resources:   resources,
 	}
 }
 
-func NewServer(planID uuid.UUID, name string) (Server, error) {
+func NewServer(planID uuid.UUID, poolID uuid.UUID, name string) (Server, error) {
 	trimmedName := strings.TrimSpace(name)
 	if trimmedName == "" {
 		return Server{}, fmt.Errorf("%w: server name cannot be empty", ErrValidation)
@@ -56,10 +65,14 @@ func NewServer(planID uuid.UUID, name string) (Server, error) {
 	if planID == uuid.Nil {
 		return Server{}, fmt.Errorf("%w: planID cannot be nil", ErrValidation)
 	}
+	if poolID == uuid.Nil {
+		return Server{}, fmt.Errorf("%w: poolID cannot be nil", ErrValidation)
+	}
 
 	return Server{
 		ID:        uuid.New(),
 		PlanID:    planID,
+		PoolID:    poolID,
 		Name:      trimmedName,
 		Status:    StatusPending,
 		CreatedAt: time.Now().UTC(),
@@ -76,12 +89,27 @@ func (s *Business) FindByID(ctx context.Context, ID uuid.UUID) (Server, error) {
 }
 
 func (s *Business) Create(ctx context.Context, name string, planID uuid.UUID) (Server, error) {
-	_, err := s.planBus.FindByID(ctx, planID)
+	planFound, err := s.planBus.FindByID(ctx, planID)
 	if err != nil {
+		if errors.Is(err, plan.ErrPlanNotFound) {
+			return Server{}, ErrInvalidPlan
+		}
 		return Server{}, fmt.Errorf("plan.findbyid: %w", err)
 	}
 
-	server, err := NewServer(planID, name)
+	resorce := Resources{
+		CPUCores: planFound.CPUCores,
+		RAMMB:    planFound.RAMMB,
+		DiskGB:   planFound.DiskGB,
+		IPCount:  planFound.IpCount,
+	}
+
+	poolID, err := s.resources.Consume(ctx, resorce)
+	if err != nil {
+		return Server{}, fmt.Errorf("resources.consume: %w", err)
+	}
+
+	server, err := NewServer(planID, poolID, name)
 	if err != nil {
 		return Server{}, err
 	}
@@ -155,8 +183,24 @@ func (s *Business) Delete(ctx context.Context, serverID uuid.UUID) (Server, erro
 		return Server{}, fmt.Errorf("%w: cannot delete server with status '%s', expected RUNNING or STOPPED", ErrValidation, server.Status)
 	}
 
+	plan, err := s.planBus.FindByID(ctx, server.PlanID)
+	if err != nil {
+		return Server{}, fmt.Errorf("delete: %w", err)
+	}
+
+	resource := Resources{
+		CPUCores: plan.CPUCores,
+		RAMMB:    plan.RAMMB,
+		DiskGB:   plan.DiskGB,
+		IPCount:  plan.IpCount,
+	}
+
 	if err := s.storer.Delete(ctx, serverID); err != nil {
 		return Server{}, fmt.Errorf("delete: %w", err)
+	}
+
+	if err := s.resources.Return(ctx, resource, server.PoolID); err != nil {
+		return Server{}, fmt.Errorf("resources.return: %w", err)
 	}
 
 	return server, nil

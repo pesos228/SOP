@@ -10,6 +10,7 @@ type Plan struct {
 	CPUCores int
 	RAMMB    int
 	DiskGB   int
+	IpCount  int
 }
 
 type CreatePlanParams struct {
@@ -17,4 +18,5 @@ type CreatePlanParams struct {
 	CPUCores int
 	RAMMB    int
 	DiskGB   int
+	IpCount  int
 }

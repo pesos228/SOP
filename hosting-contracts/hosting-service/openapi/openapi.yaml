@@ -124,6 +124,9 @@ paths:
                 $ref: "#/components/schemas/Server"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "409":
+          description: "Недостаточно ресурсов для создания сервера"
+          $ref: "#/components/responses/Conflict"
 
   /servers/{serverId}:
     get:
@@ -193,6 +196,12 @@ components:
             $ref: "#/components/schemas/StatusResponse"
     NotFound:
       description: "Ресурс не найден"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/StatusResponse"
+    Conflict:
+      description: "Конфликт состояния ресурса"
       content:
         application/json:
           schema:
@@ -279,24 +288,26 @@ components:
     # --- Domain Structures ---
     ServerPlan:
       type: object
-      required: ["id", "name", "cpuCores", "ramMb", "diskGb", "_links"]
+      required: ["id", "name", "cpuCores", "ramMb", "diskGb", "_links", "ipCount"]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
         cpuCores: { type: integer }
         ramMb: { type: integer }
         diskGb: { type: integer }
+        ipCount: { type: integer }
         _links:
           $ref: "#/components/schemas/Links"
 
     ServerPlanCreateRequest:
       type: object
-      required: ["name", "cpuCores", "ramMb", "diskGb"]
+      required: ["name", "cpuCores", "ramMb", "diskGb", "ipCount"]
       properties:
         name: { type: string }
         cpuCores: { type: integer }
         ramMb: { type: integer }
         diskGb: { type: integer }
+        ipCount: { type: integer }
 
     PlanCollectionResponse:
       type: object
@@ -316,7 +327,7 @@ components:
 
     Server:
       type: object
-      required: ["id", "name", "status", "planId", "createdAt", "_links"]
+      required: ["id", "name", "status", "planId", "createdAt", "_links", "poolId"]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
@@ -328,6 +339,7 @@ components:
         planId: { type: string, format: uuid }
         IPv4Address: { type: string, format: ipv4 }
         createdAt: { type: string, format: date-time }
+        poolId: { type: string, format: uuid }
         _links:
           $ref: "#/components/schemas/Links"
 

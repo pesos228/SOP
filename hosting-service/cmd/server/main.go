@@ -13,9 +13,11 @@ import (
 	"hosting-service/cmd/server/rest"
 	"hosting-service/internal/plan"
 	"hosting-service/internal/plan/stores/plandb"
+	"hosting-service/internal/platform/grpc"
 	"hosting-service/internal/platform/mid"
 	"hosting-service/internal/server"
 	"hosting-service/internal/server/stores/serverdb"
+	"hosting-service/internal/server/stores/servergrpc"
 	"hosting-service/internal/server/stores/servermsg"
 	"log"
 	"net/http"
@@ -63,6 +65,10 @@ func run(ctx context.Context) error {
 			HandlerTimeout time.Duration `conf:"default:10s"`
 			QueueName      string        `conf:"default:api_events_queue"`
 		}
+		Resources struct {
+			Host    string        `conf:"default:hosting-resources-service:2001"`
+			Timeout time.Duration `conf:"default:5s"`
+		}
 	}{}
 
 	const prefix = "SERV"
@@ -88,6 +94,13 @@ func run(ctx context.Context) error {
 	}
 
 	defer db.Close()
+
+	grpcConn, err := grpc.NewClient(cfg.Resources.Host)
+	if err != nil {
+		return fmt.Errorf("initializing grpc client: %w", err)
+	}
+
+	defer grpcConn.Close()
 
 	rqManager, err := messaging.NewMessageManager(cfg.AMQP.URL, []messaging.ExchangeConfig{
 		{
@@ -120,7 +133,8 @@ func run(ctx context.Context) error {
 
 	serverPublisher := servermsg.NewPublisher(rqManager)
 	serverStore := serverdb.NewStore(db)
-	serverBus := server.NewBusiness(serverStore, planBus, serverPublisher)
+	serverGrpc := servergrpc.NewGrpc(grpcConn, cfg.Resources.Timeout)
+	serverBus := server.NewBusiness(serverStore, planBus, serverPublisher, serverGrpc)
 
 	err = queue.RegisterAll(rqManager, queue.Config{
 		ServerBus: serverBus,

@@ -13,6 +13,25 @@ import (
 	"github.com/google/uuid"
 )
 
+type mockResourcesManager struct {
+	ConsumeFunc func(ctx context.Context, r server.Resources) (uuid.UUID, error)
+	ReturnFunc  func(ctx context.Context, r server.Resources, poolID uuid.UUID) error
+}
+
+func (m *mockResourcesManager) Consume(ctx context.Context, r server.Resources) (uuid.UUID, error) {
+	if m.ConsumeFunc != nil {
+		return m.ConsumeFunc(ctx, r)
+	}
+	return uuid.New(), nil
+}
+
+func (m *mockResourcesManager) Return(ctx context.Context, r server.Resources, poolID uuid.UUID) error {
+	if m.ReturnFunc != nil {
+		return m.ReturnFunc(ctx, r, poolID)
+	}
+	return nil
+}
+
 type mockPlanFinder struct {
 	FindByIDFunc func(ctx context.Context, ID uuid.UUID) (plan.Plan, error)
 }
@@ -77,7 +96,6 @@ func (m *mockProvisioner) RequestIP(ctx context.Context, s server.Server) error 
 func Test_Create(t *testing.T) {
 	ctx := context.Background()
 	planID := uuid.New()
-
 	errBoom := errors.New("boom")
 
 	type testCase struct {
@@ -88,6 +106,7 @@ func Test_Create(t *testing.T) {
 		pf   func() *mockPlanFinder
 		st   func() *mockStorer
 		prov func() *mockProvisioner
+		rm   func() *mockResourcesManager
 
 		wantErr error
 	}
@@ -115,6 +134,7 @@ func Test_Create(t *testing.T) {
 				}
 			},
 			prov:    func() *mockProvisioner { return &mockProvisioner{} },
+			rm:      func() *mockResourcesManager { return &mockResourcesManager{} },
 			wantErr: nil,
 		},
 		{
@@ -130,6 +150,7 @@ func Test_Create(t *testing.T) {
 			},
 			st:      func() *mockStorer { return &mockStorer{} },
 			prov:    func() *mockProvisioner { return &mockProvisioner{} },
+			rm:      func() *mockResourcesManager { return &mockResourcesManager{} },
 			wantErr: errBoom,
 		},
 		{
@@ -145,6 +166,7 @@ func Test_Create(t *testing.T) {
 			},
 			st:      func() *mockStorer { return &mockStorer{} },
 			prov:    func() *mockProvisioner { return &mockProvisioner{} },
+			rm:      func() *mockResourcesManager { return &mockResourcesManager{} },
 			wantErr: server.ErrValidation,
 		},
 		{
@@ -166,13 +188,14 @@ func Test_Create(t *testing.T) {
 					},
 				}
 			},
+			rm:      func() *mockResourcesManager { return &mockResourcesManager{} },
 			wantErr: errBoom,
 		},
 	}
 
 	for _, tt := range table {
 		t.Run(tt.name, func(t *testing.T) {
-			bus := server.NewBusiness(tt.st(), tt.pf(), tt.prov())
+			bus := server.NewBusiness(tt.st(), tt.pf(), tt.prov(), tt.rm())
 
 			got, err := bus.Create(ctx, tt.serverName, tt.planID)
 
@@ -192,7 +215,6 @@ func Test_Create(t *testing.T) {
 		})
 	}
 }
-
 func Test_Start(t *testing.T) {
 	ctx := context.Background()
 	srvID := uuid.New()
@@ -251,7 +273,7 @@ func Test_Start(t *testing.T) {
 
 	for _, tt := range table {
 		t.Run(tt.name, func(t *testing.T) {
-			bus := server.NewBusiness(tt.st(), nil, nil)
+			bus := server.NewBusiness(tt.st(), nil, nil, nil)
 
 			_, err := bus.Start(ctx, srvID)
 
@@ -330,7 +352,7 @@ func Test_SetIPAddress(t *testing.T) {
 
 	for _, tt := range table {
 		t.Run(tt.name, func(t *testing.T) {
-			bus := server.NewBusiness(tt.setupStorer(), nil, nil)
+			bus := server.NewBusiness(tt.setupStorer(), nil, nil, nil)
 			err := bus.SetIPAddress(ctx, srvID, tt.ip)
 
 			if tt.wantErr != nil {
@@ -349,6 +371,7 @@ func Test_SetIPAddress(t *testing.T) {
 func Test_Delete(t *testing.T) {
 	ctx := context.Background()
 	srvID := uuid.New()
+	planID := uuid.New() // Нам нужен planID для мока
 
 	type testCase struct {
 		name    string
@@ -378,10 +401,24 @@ func Test_Delete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			st := &mockStorer{
 				FindByIDFunc: func(ctx context.Context, ID uuid.UUID) (server.Server, error) {
-					return server.Server{ID: ID, Status: tt.status}, nil
+					return server.Server{ID: ID, Status: tt.status, PlanID: planID}, nil
+				},
+				DeleteFunc: func(ctx context.Context, ID uuid.UUID) error { return nil },
+			}
+
+			pf := &mockPlanFinder{
+				FindByIDFunc: func(ctx context.Context, ID uuid.UUID) (plan.Plan, error) {
+					return plan.Plan{ID: ID}, nil
 				},
 			}
-			bus := server.NewBusiness(st, nil, nil)
+
+			rm := &mockResourcesManager{
+				ReturnFunc: func(ctx context.Context, r server.Resources, poolID uuid.UUID) error {
+					return nil
+				},
+			}
+
+			bus := server.NewBusiness(st, pf, nil, rm)
 
 			_, err := bus.Delete(ctx, srvID)
 

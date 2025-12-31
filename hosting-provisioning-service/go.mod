@@ -11,8 +11,8 @@ require (
 	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/wagslane/go-rabbitmq v0.15.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
-	golang.org/x/sys v0.35.0 // indirect
-	google.golang.org/protobuf v1.36.8 // indirect
+	golang.org/x/sys v0.38.0 // indirect
+	google.golang.org/protobuf v1.36.10 // indirect
 )
 
 require hosting-kit v0.0.0-00010101000000-000000000000

@@ -12,6 +12,7 @@ type planDB struct {
 	CPUCores int       `db:"cpu_cores"`
 	RAMMB    int       `db:"ram_mb"`
 	DiskGB   int       `db:"disk_gb"`
+	IpCount  int       `db:"ip_count"`
 }
 
 func toDBPlan(p plan.Plan) planDB {
@@ -21,6 +22,7 @@ func toDBPlan(p plan.Plan) planDB {
 		CPUCores: p.CPUCores,
 		RAMMB:    p.RAMMB,
 		DiskGB:   p.DiskGB,
+		IpCount:  p.IpCount,
 	}
 }
 
@@ -31,6 +33,7 @@ func toBusPlan(db planDB) plan.Plan {
 		CPUCores: db.CPUCores,
 		RAMMB:    db.RAMMB,
 		DiskGB:   db.DiskGB,
+		IpCount:  db.IpCount,
 	}
 }
 

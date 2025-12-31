@@ -101,6 +101,7 @@ type Server struct {
 	Id              openapi_types.UUID `json:"id"`
 	Name            string             `json:"name"`
 	PlanId          openapi_types.UUID `json:"planId"`
+	PoolId          openapi_types.UUID `json:"poolId"`
 	Status          ServerStatus       `json:"status"`
 }
 
@@ -135,6 +136,7 @@ type ServerPlan struct {
 	CpuCores        int                `json:"cpuCores"`
 	DiskGb          int                `json:"diskGb"`
 	Id              openapi_types.UUID `json:"id"`
+	IpCount         int                `json:"ipCount"`
 	Name            string             `json:"name"`
 	RamMb           int                `json:"ramMb"`
 }
@@ -143,6 +145,7 @@ type ServerPlan struct {
 type ServerPlanCreateRequest struct {
 	CpuCores int    `json:"cpuCores"`
 	DiskGb   int    `json:"diskGb"`
+	IpCount  int    `json:"ipCount"`
 	Name     string `json:"name"`
 	RamMb    int    `json:"ramMb"`
 }
@@ -160,6 +163,9 @@ type PageSize = int
 
 // BadRequest defines model for BadRequest.
 type BadRequest = StatusResponse
+
+// Conflict defines model for Conflict.
+type Conflict = StatusResponse
 
 // NotFound defines model for NotFound.
 type NotFound = StatusResponse
@@ -610,6 +616,8 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 
 type BadRequestJSONResponse StatusResponse
 
+type ConflictJSONResponse StatusResponse
+
 type NotFoundJSONResponse StatusResponse
 
 type GetRootRequestObject struct {
@@ -736,6 +744,15 @@ type OrderServer400JSONResponse struct{ BadRequestJSONResponse }
 func (response OrderServer400JSONResponse) VisitOrderServerResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type OrderServer409JSONResponse struct{ ConflictJSONResponse }
+
+func (response OrderServer409JSONResponse) VisitOrderServerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(409)
 
 	return json.NewEncoder(w).Encode(response)
 }

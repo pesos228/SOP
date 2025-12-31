@@ -29,6 +29,7 @@ func toServer(s server.Server, prefix string) gen.Server {
 		Name:            s.Name,
 		PlanId:          s.PlanID,
 		IPv4Address:     s.IPv4Address,
+		PoolId:          s.PoolID,
 		Status:          gen.ServerStatus(s.Status),
 		CreatedAt:       s.CreatedAt,
 		UnderscoreLinks: links,

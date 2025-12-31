@@ -22,9 +22,9 @@ func NewStore(db *pgxpool.Pool) *Store {
 func (s *Store) Create(ctx context.Context, p plan.Plan) error {
 	const q = `
 	INSERT INTO plans 
-		(id, name, cpu_cores, ram_mb, disk_gb)
+		(id, name, cpu_cores, ram_mb, disk_gb, ip_count)
 	VALUES 
-		(@id, @name, @cpu_cores, @ram_mb, @disk_gb)`
+		(@id, @name, @cpu_cores, @ram_mb, @disk_gb, @ip_count)`
 
 	dbPlan := toDBPlan(p)
 
@@ -34,6 +34,7 @@ func (s *Store) Create(ctx context.Context, p plan.Plan) error {
 		"cpu_cores": dbPlan.CPUCores,
 		"ram_mb":    dbPlan.RAMMB,
 		"disk_gb":   dbPlan.DiskGB,
+		"ip_count":  dbPlan.IpCount,
 	}
 
 	_, err := s.db.Exec(ctx, q, args)
@@ -47,7 +48,7 @@ func (s *Store) Create(ctx context.Context, p plan.Plan) error {
 func (s *Store) FindByID(ctx context.Context, ID uuid.UUID) (plan.Plan, error) {
 	const q = `
 	SELECT 
-		id, name, cpu_cores, ram_mb, disk_gb 
+		id, name, cpu_cores, ram_mb, disk_gb, ip_count
 	FROM 
 		plans 
 	WHERE 
@@ -87,7 +88,7 @@ func (s *Store) FindAll(ctx context.Context, pg page.Page) ([]plan.Plan, int, er
 
 	const qSelect = `
 	SELECT 
-		id, name, cpu_cores, ram_mb, disk_gb 
+		id, name, cpu_cores, ram_mb, disk_gb, ip_count
 	FROM 
 		plans
 	ORDER BY 

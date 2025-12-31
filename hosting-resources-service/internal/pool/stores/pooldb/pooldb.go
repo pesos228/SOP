@@ -54,7 +54,7 @@ func (s *Store) AppendResource(ctx context.Context, r pool.Resource, poolID uuid
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return pool.Pool{}, fmt.Errorf("%w: pool not found with ID: %s", pool.ErrPoolNotFound, poolID)
+			return pool.Pool{}, pool.ErrPoolNotFound
 		}
 		return pool.Pool{}, fmt.Errorf("db: append query: %w", err)
 	}

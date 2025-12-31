@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package gen;
+
+option go_package = "./;gen"; 
+
+service Resources {
+    rpc ConsumeResource(ConsumeRequest) returns (ConsumeReply) {}
+    rpc ReturnResource(ReturnRequest) returns (ReturnReply) {}
+}
+
+message Resource{
+    int32 cpu_cores = 1;
+    int32 ram_mb = 2;
+    int32 disk_gb = 3;
+    int32 ip_count = 4;
+}
+
+message ConsumeRequest {
+    Resource resource = 1;
+}
+
+message ConsumeReply {
+    string pool_id = 1;
+}
+
+message ReturnRequest {
+    Resource resource = 1;
+    string pool_id = 2;
+}
+
+message ReturnReply {
+}

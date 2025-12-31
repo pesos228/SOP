@@ -19,6 +19,7 @@ func toPlan(p plan.Plan, prefix string) gen.ServerPlan {
 		CpuCores:        p.CPUCores,
 		RamMb:           p.RAMMB,
 		DiskGb:          p.DiskGB,
+		IpCount:         p.IpCount,
 		UnderscoreLinks: links,
 	}
 }

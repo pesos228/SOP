@@ -51,6 +51,16 @@ func (h *Handlers) OrderServer(ctx context.Context, request gen.OrderServerReque
 				BadRequestJSONResponse: gen.BadRequestJSONResponse{Message: err.Error()},
 			}, nil
 		}
+		if errors.Is(err, server.ErrInvalidPlan) {
+			return gen.OrderServer400JSONResponse{
+				BadRequestJSONResponse: gen.BadRequestJSONResponse{Message: server.ErrInvalidPlan.Error()},
+			}, nil
+		}
+		if errors.Is(err, server.ErrNoResources) {
+			return gen.OrderServer409JSONResponse{
+				ConflictJSONResponse: gen.ConflictJSONResponse{Message: server.ErrNoResources.Error()},
+			}, nil
+		}
 		return nil, err
 	}
 
