@@ -4,31 +4,26 @@
 
 ## Общая информация
 
-Проект написан на Go в стиле, близком к рекомендациям Ardan Labs:  
-код организован по бизнес-доменам (вертикальные срезы), бизнес-логика находится в пакетах `internal/plan` и `internal/server` и не зависит от транспортных слоёв и инфраструктуры.
+Проект представляет собой распределенную систему, организованную в стиле, близком к рекомендациям Ardan Labs. Код разделен на несколько независимых сервисов, взаимодействующих через RabbitMQ и gRPC.
 
-Транспортные слои (REST API на Chi + oapi-codegen, GraphQL на gqlgen, обработка событий RabbitMQ) подключаются в `main.go` через dependency injection.
-
-Асинхронное выделение IP-адреса реализовано через отдельный сервис `hosting-provisioning-service`, взаимодействие — по RabbitMQ с использованием контрактных структур событий.
+Транспортные слои включают REST (Chi + oapi-codegen), GraphQL (gqlgen) и gRPC. Авторизация интегрирована с Ory Kratos.
 
 ## Технологии
 
-- Go 1.24
-- PostgreSQL (pgx/v5)
-- RabbitMQ
-- REST: Chi + oapi-codegen
-- GraphQL: gqlgen
-- Конфигурация: ardanlabs/conf
-- Миграции: goose
+- **Go 1.24** & **1.25**
+- **PostgreSQL**: для хранения планов, серверов и пулов ресурсов.
+- **RabbitMQ** для межсервисных команд и событий.
+- **Auth**: Ory Kratos.
+- **Observability**: OpenTelemetry (Tempo), Prometheus, Grafana.
+- **API**: REST (HATEOAS/HAL), GraphQL, gRPC.
+- **Web**: Vanilla JS SPA с поддержкой WebSocket уведомлений.
 
-## Структура
+## Структура репозитория
 
-- `hosting-service/cmd/server` — точка входа и транспортные слои
-- `hosting-service/cmd/migrator` — CLI для миграций
-- `hosting-service/internal/plan` — бизнес-логика тарифных планов
-- `hosting-service/internal/server` — бизнес-логика серверов
-- `hosting-service/internal/platform` — общая инфраструктура (БД, middleware)
-- `hosting-contracts` — спецификации REST и GraphQL
-- `hosting-events-contract` — контракты событий RabbitMQ
-- `hosting-kit` — общая обёртка над RabbitMQ
-- `hosting-provisioning-service` — отдельный сервис provisioning'а
+### Основные компоненты
+- `hosting-service`: Логика витрины планов и жизненного цикла серверов.
+- `hosting-resources-service`: Управление квотами в пулах ресурсов (gRPC сервер).
+- `hosting-provisioning-service`: Обработка очередей на выделение IP.
+- `hosting-notification-service`: WebSocket-хаб для real-time обновлений клиента.
+- `hosting-kit`: Shared-пакет (logger, auth, messaging, mid, otel) — инфраструктурный фундамент.
+- `hosting-contracts`: Общие спецификации (Protobuf, OpenAPI, GraphQL) и структуры событий RabbitMQ.
